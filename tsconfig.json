@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "outFile": "./bin/compiler.js",
+		"sourceMap": true,
+        "target": "es2017",
+        "lib": ["es2017", "dom"]
+    },
+    "include": [
+        "./src/ts/*"
+    ],
+    "compileOnSave": true
+}
