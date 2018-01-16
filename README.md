@@ -1,4 +1,4 @@
-# Daniel Ahl's repository for Design of Compilers
+# Daniel Ahl's Repository for Design of Compilers
 
 The language I have chosen to write my compiler in is Typescript.
 
