@@ -39,6 +39,41 @@ function getTokens(source: string): Token[] {
       Log.print("LEXER: '$'	-->	[EOP]");
       otherTokens = getTokens(source.substring(1));
       return [token].concat(otherTokens);
+    case '"':
+      token = new Token("QUOTE");
+      Log.print("LEXER: '\"'	-->	[QUOTE]");
+      otherTokens = getTokens(source.substring(1));
+      return [token].concat(otherTokens);
+    case '+':
+      token = new Token("INTOP");
+      Log.print("LEXER: '+'	-->	[INTOP]");
+      otherTokens = getTokens(source.substring(1));
+      return [token].concat(otherTokens);
+    case '=':
+      //Lookahead to determine token
+      if (source.charAt(1) === '=') {
+        token = new Token("EQUAL");
+        Log.print("LEXER: '=='	-->	[EQUAL]");
+        otherTokens = getTokens(source.substring(2));
+        return [token].concat(otherTokens);
+      } else {
+        token = new Token("ASSIGN");
+        Log.print("LEXER: '='	-->	[ASSIGN]");
+        otherTokens = getTokens(source.substring(1));
+        return [token].concat(otherTokens);
+      }
+    case '!':
+      //Lookahead to determine token
+      if (source.charAt(1) === '=') {
+        token = new Token("NOTEQUAL");
+        Log.print("LEXER: '!='	-->	[NOTEQUAL]");
+        otherTokens = getTokens(source.substring(2));
+        return [token].concat(otherTokens);
+      } else {
+        Log.print("LEXER: ERROR: Unidentified token '"
+                    + source.charAt(0) + "' encountered");
+        return getTokens(source.substring(1));
+      }
     case '/':
       if (source.charAt(1) === '*') {
         //Skip to end of comment
