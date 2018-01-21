@@ -98,26 +98,25 @@ function getTokens(source: string, last?: Token): Token {
       getTokens(source.substring(1), token);
       break;
     case '"':
-      let i = 0;
-      do {
-        i++;
-        if (i >= source.length) {
-          Log.print("LEXER: WARNING: Unclosed String literal", LogPri.WARNING);
-          let str = source.substr(0, i) + "\"";
-          token = createToken(str, "STRLIT", last, str);
-          break;
-        }
-        if (source.charAt(i) === "\"") {
-          let str = source.substr(0, i+1);
-          token = createToken(str, "STRLIT", last, str);
-          break;
-        }
-        if (source.charAt(i) !== ' ' && !lowerAlphaRE.test(source.charAt(i))) {
-          Log.print("LEXER: ERROR: Unexpected token '" + source.substr(0, i + 1) + "' encountered.", LogPri.ERROR);
-          return;
-        }
-      } while (i < source.length)
-      getTokens(source.substring(i+1), token);
+      //Find entire string literal
+      let str;
+      let index = source.indexOf("\"", 1);
+      if (index === -1) {
+        Log.print("LEXER: WARNING: Unclosed String literal", LogPri.WARNING);
+        str = source.substr(0) + "\"";
+        index = source.length-1;
+      } else {
+        str = source.substr(0, index+1);
+      }
+      if (/^[a-z" ]*$/.test(str)) {
+        //The string literal contains only valid characters
+        token = createToken(str, "STRLIT", last, str);
+        getTokens(source.substring(index+1), token);
+      } else {
+        //The string contains invalid charaters
+        Log.print("LEXER: ERROR: Unexpected token '" + source.substr(0, index + 1) + "' encountered", LogPri.ERROR);
+        return;
+      }
       break;
     case '+':
       token = createToken("+", "INTOP", last);
