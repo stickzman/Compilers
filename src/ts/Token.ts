@@ -4,6 +4,10 @@ class Token {
   constructor(public name: string, public value?) {}
 
   public toString(): string {
-    return this.name;
+    if (this.value === undefined) {
+      return this.name;
+    } else {
+      return this.name, this.value;
+    }
   }
 }

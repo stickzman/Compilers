@@ -106,8 +106,26 @@ function getTokens(source: string, last?: Token): Token {
       getTokens(source.substring(1), token);
       break;
     case '"':
-      token = createToken("\"", "QUOTE", last);
-      getTokens(source.substring(1), token);
+      let i = 0;
+      do {
+        i++;
+        if (i >= source.length) {
+          Log.print("LEXER: WARNING: Unclosed String literal", LogPri.WARNING);
+          let str = source.substr(0, i) + "\"";
+          token = createToken(str, "STRLIT", last, str);
+          break;
+        }
+        if (source.charAt(i) === "\"") {
+          let str = source.substr(0, i+1);
+          token = createToken(str, "STRLIT", last, str);
+          break;
+        }
+        if (source.charAt(i) !== ' ' && !lowerAlphaRE.test(source.charAt(i))) {
+          Log.print("LEXER: ERROR: Unexpected token '" + source.substr(0, i + 1) + "' encountered.", LogPri.ERROR);
+          return;
+        }
+      } while (i < source.length)
+      getTokens(source.substring(i+1), token);
       break;
     case '+':
       token = createToken("+", "INTOP", last);
