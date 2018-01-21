@@ -11,14 +11,28 @@
 				</div>
 			</div>
 			<div class="row">
-				<div class="col">
+				<div class="col py-2">
 					<label><b>Console</b></label>
 					<div class="panel panel-default">
 						<textarea id="source" class="form-control" rows="25"></textarea>
 					</div>
 				</div>
 				<div class="col">
-					<label><b>Log</b></label>
+					<div class="row py-1">
+						<div class="col">
+							<label><b>Log</b></label>
+						</div>
+						<div class="col">
+							<label class="form-text" align="right">Priority Level:</label>
+						</div>
+						<div class="col">
+							<select class="form-control" onchange="Log.updateLevel(this.value)">
+							  <option value="VERBOSE">VERBOSE</option>
+							  <option value="WARNING" selected>WARNING</option>
+							  <option value="ERROR">ERROR</option>
+							</select>
+							</div>
+						</div>
 					<div class="panel panel-default">
 						<textarea readonly id="log" class="form-control" rows="25"></textarea>
 					</div>

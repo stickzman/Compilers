@@ -1,6 +1,6 @@
 /// <reference path="Helper.ts"/>
 class Log {
-  public static level: LogPri = LogPri.WARNING;
+  private static level: LogPri = LogPri.WARNING;
   public static logElem: HTMLInputElement;
 
   public static init() {
@@ -13,12 +13,22 @@ class Log {
     }
   }
 
-  private static display(msg: string) {
-    Log.logElem.value = Log.logElem.value + msg + "\n";
-  }
-
   public static clear() {
     Log.logElem.value = "";
+  }
+
+  public static updateLevel(level: string) {
+    switch (level) {
+      case "VERBOSE":
+        Log.level = LogPri.VERBOSE;
+        break;
+      case "WARNING":
+        Log.level = LogPri.WARNING;
+        break;
+      case "ERROR":
+        Log.level = LogPri.ERROR;
+        break;
+    }
   }
 
 }

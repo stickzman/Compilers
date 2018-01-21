@@ -2,7 +2,6 @@ function tokenizeInput() {
   let sourceElem = <HTMLInputElement>document.getElementById("source");
   let source = sourceElem.value;
 
-  Log.level = LogPri.VERBOSE;
   Log.clear();
 
   //Begin generating tokens from source code
