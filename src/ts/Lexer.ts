@@ -6,16 +6,13 @@ function tokenizeInput() {
 
   //Begin generating tokens from source code
   let first = getTokens(source);
-  console.log(first.name);
 }
 
-function getTokens(source: string, last: Token = new Token("")): Token {
+function getTokens(source: string, last?: Token): Token {
   if (source.length <= 0) {
-    if (last.name !== "EOP") {
-      Log.print("LEXER: WARNING: Missing EOP character '$'", LogPri.WARNING);
-      return createToken("$", "EOP", last);
-    }
-    return;
+    if (last === undefined || last.name === "EOP") return;
+    Log.print("LEXER: WARNING: Missing EOP character '$'", LogPri.WARNING);
+    return createToken("$", "EOP", last);
   }
   let token: Token;
   let otherTokens: Token[];
@@ -68,7 +65,7 @@ function getTokens(source: string, last: Token = new Token("")): Token {
         break;
       } else {
         Log.print("LEXER: ERROR: Unidentified token '"
-                    + source.charAt(0) + "' encountered");
+                    + source.charAt(0) + "' encountered", LogPri.ERROR);
         getTokens(source.substring(1), last);
         break;
       }
@@ -108,16 +105,16 @@ function getTokens(source: string, last: Token = new Token("")): Token {
       break;
     default:
       Log.print("LEXER: ERROR: Unidentified token '"
-                  + source.charAt(0) + "' encountered");
+                  + source.charAt(0) + "' encountered", LogPri.ERROR);
       getTokens(source.substring(1), last);
       break;
   }
-  if (last.name === "") return last.next; else return last;
+  return token;
 }
 
-function createToken(chars: string, name: string, last:Token) {
+function createToken(chars: string, name: string, last?:Token) {
   let token = new Token(name);
-  last.next = token;
+  if (last !== undefined) last.next = token;
   Log.print(`LEXER: '${chars}'	-->	[${name}]`);
   return token;
 }
