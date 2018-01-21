@@ -1,47 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-	<script type="text/javascript" src="bin/compiler.js"></script>
-	<body onload="Log.init()">
-		<div class="container py-2" >
-			<h1 align="center">Daniel Ahl's Compiler</h1>
-			<div class="row">
-				<div class="col">
-					<div class="row py-1">
-						<div class="col">
-							<label><b>Console</b></label>
-						</div>
-					</div>
-					<div class="panel panel-default">
-						<textarea id="source" class="form-control" rows="20"></textarea>
-					</div>
-				</div>
-				<div class="col">
-					<div class="row py-1">
-						<div class="col">
-							<label><b>Log</b></label>
-						</div>
-						<div class="col">
-							<label class="form-text" align="right">Priority Level:</label>
-						</div>
-						<div class="col">
-							<select class="form-control" onchange="Log.updateLevel(this.value)">
-							  <option value="VERBOSE" selected>VERBOSE</option>
-							  <option value="WARNING">WARNING</option>
-							  <option value="ERROR">ERROR</option>
-							</select>
-							</div>
-						</div>
-					<div class="panel panel-default">
-						<textarea readonly id="log" class="form-control" rows="20"></textarea>
-					</div>
-				</div>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+<script type="text/javascript" src="bin/compiler.js"></script>
+
+<body onload="Log.init()">
+	<div class="container py-2">
+		<h1 align="center">Daniel Ahl's Compiler</h1>
+		<div class="row py-1">
+			<div class="col">
+				<label><b>Console</b></label>
 			</div>
-			<div class="row pt-3">
-				<div class="col">
-					<button id="compileBtn" class="form-control btn-success" onclick="tokenizeInput()">Compile</button>
+			<div class="col">
+				<div class="row">
+					<div class="col">
+						<label><b>Log</b></label>
+					</div>
+					<div class="col">
+						<label class="form-text" align="right">Priority Level:</label>
+					</div>
+					<div class="col">
+						<select class="form-control" onchange="Log.updateLevel(this.value)">
+						  <option value="VERBOSE" selected>VERBOSE</option>
+						  <option value="WARNING">WARNING</option>
+						  <option value="ERROR">ERROR</option>
+						</select>
+					</div>
 				</div>
 			</div>
 		</div>
-	</body>
+		<div class="row">
+			<div class="col">
+				<div class="panel panel-default">
+					<textarea id="source" class="form-control" rows="20"></textarea>
+				</div>
+			</div>
+			<div class="col">
+				<div class="panel panel-default">
+					<textarea readonly id="log" class="form-control" rows="20"></textarea>
+				</div>
+			</div>
+		</div>
+		<div class="row pt-3">
+			<div class="col">
+				<button id="compileBtn" class="form-control btn-success" onclick="tokenizeInput()">Compile</button>
+			</div>
+		</div>
+	</div>
+</body>
+
 </html>
