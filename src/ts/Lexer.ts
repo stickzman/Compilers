@@ -132,7 +132,7 @@ function tokenizeInput() {
           numErrors++;
           Log.print("LEXER: ERROR: Unexpected token '" + str +
             "' encountered on line " + lineNum, LogPri.ERROR);
-          return;
+          getTokens(source.substring(index+1), token);
         }
         break;
       case '+':
@@ -164,6 +164,7 @@ function tokenizeInput() {
         numErrors++;
         Log.print("LEXER: ERROR: Unidentified token '" + source.charAt(0) +
           "' encountered on line " + lineNum, LogPri.ERROR);
+        getTokens(source.substring(1), last);
         break;
     }
 
