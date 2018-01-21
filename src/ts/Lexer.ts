@@ -16,6 +16,73 @@ function getTokens(source: string, last?: Token): Token {
   }
   let token: Token;
   let otherTokens: Token[];
+  let lowerAlphaRE = /^[a-z]/;
+  let digitRE = /^[0-9]/;
+
+  //Look for all multi-character tokens
+  if (source.substr(0, 5) === "print") {
+    token = createToken("print", "PRINT", last);
+    getTokens(source.substring(5), token);
+  } else if (source.substr(0, 5) === "while") {
+    token = createToken("while", "WHILE", last);
+    getTokens(source.substring(5), token);
+  } else if (source.substr(0, 2) === "if") {
+    token = createToken("if", "IF", last);
+    getTokens(source.substring(2), token);
+  } else if (source.substr(0, 3) === "int") {
+    token = createToken("int", "INT", last);
+    getTokens(source.substring(3), token);
+  } else if (source.substr(0, 6) === "string") {
+    token = createToken("string", "STRING", last);
+    getTokens(source.substring(6), token);
+  } else if (source.substr(0, 7) === "boolean") {
+    token = createToken("boolean", "BOOLEAN", last);
+    getTokens(source.substring(7), token);
+  } else if (source.substr(0, 5) === "false") {
+    token = createToken("false", "FALSE", last);
+    getTokens(source.substring(5), token);
+  } else if (source.substr(0, 4) === "true") {
+    token = createToken("true", "TRUE", last);
+    getTokens(source.substring(4), token);
+  } else if (source.substr(0, 2) === "==") {
+    token = createToken("==", "EQUAL", last);
+    getTokens(source.substring(2), token);
+  } else if (source.substr(0, 2) === "!=") {
+    token = createToken("!=", "NOTEQUAL", last);
+    getTokens(source.substring(2), token);
+  } else if (source.substr(0, 2) === "/*") {
+    //Skip to end of comment
+    let i = 1;
+    while (i < source.length) {
+      i++;
+      if (i >= source.length) {
+        //Reached end of file
+        Log.print("LEXER: WARNING: Unclosed comment block", LogPri.WARNING);
+        getTokens(source.substring(i), last);
+        break;
+      }
+      if (source.substr(i, 2) === "*/") {
+        //Found end of comment
+        i += 2;
+        break;
+      }
+    }
+    getTokens(source.substring(i), last);
+    return;
+  } else if (lowerAlphaRE.test(source)) {
+    //The first character is a lowercase letter
+    token = createToken(source.charAt(0), "ID", last, source.charAt(0));
+    getTokens(source.substring(1), token);
+  } else if (digitRE.test(source)) {
+    //The first character is a digit
+    let num = Number(source.charAt(0));
+    token = createToken(source.charAt(0), "DIGIT", last, num);
+    getTokens(source.substring(1), token);
+  }
+
+  if (token !== undefined) return token;
+
+
   switch (source.charAt(0)) {
     case '{':
       token = createToken("{", "LBRACE", last);
@@ -47,51 +114,14 @@ function getTokens(source: string, last?: Token): Token {
       getTokens(source.substring(1), token);
       break;
     case '=':
-      //Lookahead to determine token
-      if (source.charAt(1) === '=') {
-      token = createToken("==", "EQUAL", last);
-      getTokens(source.substring(2), token);
+      token = createToken("=", "ASSIGN", last);
+      getTokens(source.substring(1), token);
       break;
-      } else {
-        token = createToken("=", "ASSIGN", last);
-        getTokens(source.substring(1), token);
-        break;
-      }
-    case '!':
-      //Lookahead to determine token
-      if (source.charAt(1) === '=') {
-        token = createToken("!=", "NOTEQUAL", last);
-        getTokens(source.substring(2), token);
-        break;
-      } else {
-        Log.print("LEXER: ERROR: Unidentified token '"
-                    + source.charAt(0) + "' encountered", LogPri.ERROR);
-        getTokens(source.substring(1), last);
-        break;
-      }
-    case '/':
-      if (source.charAt(1) === '*') {
-        //Skip to end of comment
-        let endOfCmt = false;
-        let i = 1;
-        while (!endOfCmt) {
-          i++;
-          if (i >= source.length) {
-            //Reached end of file
-            Log.print("LEXER: WARNING: Unclosed comment block", LogPri.WARNING);
-            getTokens(source.substring(i), last);
-            break;
-          }
-          if (source.substr(i, 2) === "*/") {
-            //Found end of comment
-            endOfCmt = true;
-            i += 2;
-          }
-        }
-        getTokens(source.substring(i), last);
-        break;
-      }
     case ' ':
+      //Skip whitespace
+      getTokens(source.substring(1), last);
+      break;
+    case '\s':
       //Skip whitespace
       getTokens(source.substring(1), last);
       break;
@@ -109,12 +139,18 @@ function getTokens(source: string, last?: Token): Token {
       getTokens(source.substring(1), last);
       break;
   }
+
   return token;
 }
 
-function createToken(chars: string, name: string, last?:Token) {
-  let token = new Token(name);
+function createToken(chars: string, name: string, last?: Token, value?) {
+  let token: Token;
+  if (value === undefined) {
+    token = new Token(name);
+  } else {
+    token = new Token(name, value);
+  }
   if (last !== undefined) last.next = token;
-  Log.print(`LEXER: '${chars}'	-->	[${name}]`);
+  Log.print(`LEXER: '${chars}' --> [${name}]`);
   return token;
 }
