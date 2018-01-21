@@ -3,7 +3,7 @@ function tokenizeInput() {
   let source = (<HTMLInputElement>document.getElementById("source")).value;
 
   Log.clear();
-  let lineNum: number = 0;
+  let lineNum: number = 1;
   let numWarns: number = 0;
   let numErrors: number = 0;
 
@@ -63,7 +63,7 @@ function tokenizeInput() {
         //Reached end of file
 
         //Add number of lines in comment to total lineNum
-        lineNum += source.split('\n').length;
+        lineNum += source.split('\n').length-1;
 
         numWarns++;
         Log.print("LEXER: WARNING: Unclosed comment block on line " + lineNum,
@@ -71,7 +71,7 @@ function tokenizeInput() {
         getTokens(source.substring(source.length), last);
       } else {
         //Add number of lines in comment to total lineNum
-        lineNum += source.substr(0, index+2).split('\n').length;
+        lineNum += source.substr(0, index+2).split('\n').length-1;
         getTokens(source.substring(index+2));
       }
       return;

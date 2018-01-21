@@ -5,14 +5,13 @@
 	<body onload="Log.init()">
 		<div class="container py-2" >
 			<h1 align="center">Daniel Ahl's Compiler</h1>
-			<div class="row py-1">
-				<div class="col">
-					<button id="compileBtn" class="form-control" onclick="tokenizeInput()">Compile</button>
-				</div>
-			</div>
 			<div class="row">
-				<div class="col py-2">
-					<label><b>Console</b></label>
+				<div class="col">
+					<div class="row py-1">
+						<div class="col">
+							<label><b>Console</b></label>
+						</div>
+					</div>
 					<div class="panel panel-default">
 						<textarea id="source" class="form-control" rows="20"></textarea>
 					</div>
@@ -36,6 +35,11 @@
 					<div class="panel panel-default">
 						<textarea readonly id="log" class="form-control" rows="20"></textarea>
 					</div>
+				</div>
+			</div>
+			<div class="row pt-3">
+				<div class="col">
+					<button id="compileBtn" class="form-control btn-success" onclick="tokenizeInput()">Compile</button>
 				</div>
 			</div>
 		</div>
