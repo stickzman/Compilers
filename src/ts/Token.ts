@@ -1,4 +1,6 @@
 class Token {
+  public next: Token;
+
   constructor(public name: string) {}
 
   public toString(): string {

@@ -1,6 +1,6 @@
 /// <reference path="Helper.ts"/>
 class Log {
-  private static level: LogPri = LogPri.WARNING;
+  private static level: LogPri = LogPri.VERBOSE;
   public static logElem: HTMLInputElement;
 
   public static init() {
