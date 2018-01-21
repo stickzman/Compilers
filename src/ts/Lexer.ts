@@ -114,7 +114,7 @@ function getTokens(source: string, last?: Token): Token {
         getTokens(source.substring(index+1), token);
       } else {
         //The string contains invalid charaters
-        Log.print("LEXER: ERROR: Unexpected token '" + source.substr(0, index + 1) + "' encountered", LogPri.ERROR);
+        Log.print("LEXER: ERROR: Unexpected token '" + str + "' encountered", LogPri.ERROR);
         return;
       }
       break;
