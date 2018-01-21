@@ -136,7 +136,6 @@ function getTokens(source: string, last?: Token): Token {
     default:
       Log.print("LEXER: ERROR: Unidentified token '"
                   + source.charAt(0) + "' encountered", LogPri.ERROR);
-      getTokens(source.substring(1), last);
       break;
   }
 
