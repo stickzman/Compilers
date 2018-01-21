@@ -5,17 +5,15 @@ function tokenizeInput() {
   Log.clear();
 
   //Begin generating tokens from source code
-  let firstTokenPointer = getTokens(source);
+  let first = getTokens(source);
+  console.log(first.name);
 }
 
 function getTokens(source: string, last: Token = new Token("")): Token {
   if (source.length <= 0) {
     if (last.name !== "EOP") {
       Log.print("LEXER: WARNING: Missing EOP character '$'", LogPri.WARNING);
-      let token = new Token("EOP");
-      Log.print("LEXER: '$'	-->	[EOP]");
-      last.next = token;
-      return token;
+      return createToken("$", "EOP", last);
     }
     return;
   }
@@ -23,75 +21,56 @@ function getTokens(source: string, last: Token = new Token("")): Token {
   let otherTokens: Token[];
   switch (source.charAt(0)) {
     case '{':
-      token = new Token("LBRACE");
-      last.next = token;
-      Log.print("LEXER: '{'	-->	[LBRACE]");
+      token = createToken("{", "LBRACE", last);
       //Get the rest of the tokens recursively
       getTokens(source.substring(1), token);
-      return token;
+      break;
     case '}':
-      token = new Token("RBRACE");
-      last.next = token;
-      Log.print("LEXER: '}'	-->	[RBRACE]");
+      token = createToken("}", "RBRACE", last);
       getTokens(source.substring(1), token);
-      return token;
+      break;
     case '(':
-      token = new Token("LPAREN");
-      last.next = token;
-      Log.print("LEXER: '('	-->	[LPAREN]");
+      token = createToken("(", "LPAREN", last);
       getTokens(source.substring(1), token);
-      return token;
+      break;
     case ')':
-      token = new Token("RPAREN");
-      last.next = token;
-      Log.print("LEXER: ')'	-->	[RPAREN]");
+      token = createToken(")", "RPAREN", last);
       getTokens(source.substring(1), token);
-      return token;
+      break;
     case '$':
-      token = new Token("EOP");
-      last.next = token;
-      Log.print("LEXER: '$'	-->	[EOP]");
+      token = createToken("$", "EOP", last);
       getTokens(source.substring(1), token);
-      return token;
+      break;
     case '"':
-      token = new Token("QUOTE");
-      last.next = token;
-      Log.print("LEXER: '\"'	-->	[QUOTE]");
+      token = createToken("\"", "QUOTE", last);
       getTokens(source.substring(1), token);
-      return token;
+      break;
     case '+':
-      token = new Token("INTOP");
-      last.next = token;
-      Log.print("LEXER: '+'	-->	[INTOP]");
+      token = createToken("+", "INTOP", last);
       getTokens(source.substring(1), token);
-      return token;
+      break;
     case '=':
       //Lookahead to determine token
       if (source.charAt(1) === '=') {
-        token = new Token("EQUAL");
-        last.next = token;
-        Log.print("LEXER: '=='	-->	[EQUAL]");
-        getTokens(source.substring(2), token);
-        return token;
+      token = createToken("==", "EQUAL", last);
+      getTokens(source.substring(2), token);
+      break;
       } else {
-        token = new Token("ASSIGN");
-        last.next = token;
-        Log.print("LEXER: '='	-->	[ASSIGN]");
+        token = createToken("=", "ASSIGN", last);
         getTokens(source.substring(1), token);
-        return token;
+        break;
       }
     case '!':
       //Lookahead to determine token
       if (source.charAt(1) === '=') {
-        token = new Token("NOTEQUAL");
-        last.next = token;
-        Log.print("LEXER: '!='	-->	[NOTEQUAL]");
-        getTokens(source.substring(1), token);
-        return token;
+        token = createToken("!=", "NOTEQUAL", last);
+        getTokens(source.substring(2), token);
+        break;
       } else {
         Log.print("LEXER: ERROR: Unidentified token '"
                     + source.charAt(0) + "' encountered");
-        return getTokens(source.substring(1), last);
+        getTokens(source.substring(1), last);
+        break;
       }
     case '/':
       if (source.charAt(1) === '*') {
@@ -101,29 +80,44 @@ function getTokens(source: string, last: Token = new Token("")): Token {
         while (!endOfCmt) {
           i++;
           if (i >= source.length) {
+            //Reached end of file
             Log.print("LEXER: WARNING: Unclosed comment block", LogPri.WARNING);
-            return getTokens(source.substring(i), last);
-          } //Reached end of file
-          if (source.charAt(i) === '*' && source.charAt(i+1) === '/') {
+            getTokens(source.substring(i), last);
+            break;
+          }
+          if (source.substr(i, 2) === "*/") {
             //Found end of comment
             endOfCmt = true;
             i += 2;
           }
         }
-        return getTokens(source.substring(i), last);
+        getTokens(source.substring(i), last);
+        break;
       }
     case ' ':
       //Skip whitespace
-      return getTokens(source.substring(1), last);
+      getTokens(source.substring(1), last);
+      break;
     case '\t':
       //Skip whitespace
-      return getTokens(source.substring(1), last);
+      getTokens(source.substring(1), last);
+      break;
     case '\n':
       //Skip whitespace
-      return getTokens(source.substring(1), last);
+      getTokens(source.substring(1), last);
+      break;
     default:
       Log.print("LEXER: ERROR: Unidentified token '"
                   + source.charAt(0) + "' encountered");
-      return getTokens(source.substring(1), last);
+      getTokens(source.substring(1), last);
+      break;
   }
+  if (last.name === "") return last.next; else return last;
+}
+
+function createToken(chars: string, name: string, last:Token) {
+  let token = new Token(name);
+  last.next = token;
+  Log.print(`LEXER: '${chars}'	-->	[${name}]`);
+  return token;
 }
