@@ -4,14 +4,20 @@ function tokenizeInput() {
 
   Log.clear();
   let lineNum: number = 0;
+  let numWarns: number = 0;
+  let numErrors: number = 0;
 
   //Begin generating tokens from source code
   let first = getTokens(source);
+
+  Log.print("");
+  Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
 
 
   function getTokens(source: string, last?: Token): Token {
     if (source.length <= 0) {
       if (last === undefined || last.name === "EOP") return;
+      numWarns++;
       Log.print("LEXER: WARNING: Missing EOP character '$' on line " + lineNum
         + ". Adding [EOP]...", LogPri.WARNING);
       return createToken("$", "EOP", last);
@@ -59,6 +65,7 @@ function tokenizeInput() {
         //Add number of lines in comment to total lineNum
         lineNum += source.split('\n').length;
 
+        numWarns++;
         Log.print("LEXER: WARNING: Unclosed comment block on line " + lineNum,
           LogPri.WARNING);
         getTokens(source.substring(source.length), last);
@@ -108,6 +115,7 @@ function tokenizeInput() {
         let str;
         let index = source.indexOf("\"", 1);
         if (index === -1) {
+          numWarns++;
           Log.print("LEXER: WARNING: Unclosed String literal on line " + lineNum
             + ". Adding closing quote...", LogPri.WARNING);
           str = source.substr(0) + "\"";
@@ -121,6 +129,7 @@ function tokenizeInput() {
           getTokens(source.substring(index+1), token);
         } else {
           //The string contains invalid charaters
+          numErrors++;
           Log.print("LEXER: ERROR: Unexpected token '" + str +
             "' encountered on line " + lineNum, LogPri.ERROR);
           return;
@@ -152,6 +161,7 @@ function tokenizeInput() {
         getTokens(source.substring(1), last);
         break;
       default:
+        numErrors++;
         Log.print("LEXER: ERROR: Unidentified token '" + source.charAt(0) +
           "' encountered on line " + lineNum, LogPri.ERROR);
         break;
