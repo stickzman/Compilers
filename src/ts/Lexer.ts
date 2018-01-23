@@ -16,7 +16,9 @@ function tokenizeInput() {
 
   function getTokens(source: string, last?: Token): Token {
     if (source.length <= 0) {
-      if (last === undefined || last.name === "EOP") return;
+      if (last === undefined || last.name === "EOP") {
+        return;
+      }
       numWarns++;
       Log.print("LEXER: WARNING: Missing EOP character '$' on line " + lineNum
         + ". Adding [EOP]...", LogPri.WARNING);
@@ -86,7 +88,9 @@ function tokenizeInput() {
       getTokens(source.substring(1), token);
     }
 
-    if (token !== undefined) return token;
+    if (token !== undefined) {
+      return token;
+    }
 
     switch (source.charAt(0)) {
       case '{':
@@ -130,8 +134,9 @@ function tokenizeInput() {
         } else {
           //The string contains invalid charaters
           numErrors++;
-          Log.print("LEXER: ERROR: Unexpected token '" + str +
-            "' encountered on line " + lineNum, LogPri.ERROR);
+          Log.print("LEXER: ERROR: String literal '" + str +
+            "' on line " + lineNum + " contains invalid characters. " +
+            "Strings can contain lowercase letters and spaces.", LogPri.ERROR);
           getTokens(source.substring(index+1), token);
         }
         break;
@@ -162,9 +167,16 @@ function tokenizeInput() {
         break;
       default:
         numErrors++;
-        Log.print("LEXER: ERROR: Unidentified token '" + source.charAt(0) +
+        //Check error token to give more information
+        if (source.substr(0, 2) === "*/") {
+          Log.print("LEXER: ERROR: Unmatched '*/' encountered on line " + lineNum
+            +". Did you mean '/*'?", LogPri.ERROR);
+          getTokens(source.substring(2), last);
+        } else {
+          Log.print("LEXER: ERROR: Unidentified token '" + source.charAt(0) +
           "' encountered on line " + lineNum, LogPri.ERROR);
-        getTokens(source.substring(1), last);
+          getTokens(source.substring(1), last);
+        }
         break;
     }
 
@@ -178,7 +190,9 @@ function tokenizeInput() {
     } else {
       token = new Token(name, value);
     }
-    if (last !== undefined) last.next = token;
+    if (last !== undefined) {
+      last.next = token;
+    }
     Log.print(`LEXER: '${chars}' --> [${name}]`);
     return token;
   }
