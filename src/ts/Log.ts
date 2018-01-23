@@ -31,4 +31,22 @@ class Log {
     }
   }
 
+  public static LexMsg(msg: string, line: number, col: number,
+      priority: LogPri = LogPri.VERBOSE, hint?: string) {
+    let str = "LEXER: ";
+    switch (priority) {
+      case LogPri.ERROR:
+        str += "ERROR: ";
+        break;
+      case LogPri.WARNING:
+        str += "WARNING: ";
+        break;
+    }
+    str += msg + ` at line: ${line} col:${col}.`;
+    if (hint !== undefined) {
+      str += " " + hint;
+    }
+    Log.print(str, priority);
+  }
+
 }

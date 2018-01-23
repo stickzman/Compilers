@@ -21,8 +21,8 @@ function tokenizeInput() {
         return null;
       }
       numWarns++;
-      Log.print("LEXER: WARNING: Missing EOP character '$' on line " + lineNum
-        + ". Adding [EOP]...", LogPri.WARNING);
+      Log.LexMsg("Missing EOP character '$'", lineNum, charNum,
+        LogPri.WARNING, "Adding [EOP]...");
       return createToken("$", "EOP", last);
     }
 
@@ -71,17 +71,15 @@ function tokenizeInput() {
       getTokens(source.substring(2), token);
     } else if (/^\/\*/.test(source)) {
       //Skip to end of comment
-      let index = source.indexOf("*/");
+      let closeIndex = source.indexOf("*/");
       let cmt: string;
-      if (index === -1) {
+      if (closeIndex === -1) {
         //Reached end of file
         numWarns++;
-        Log.print("LEXER: WARNING: Unclosed comment block on line " + lineNum,
-          LogPri.WARNING);
-
+        Log.LexMsg("Unclosed comment block", lineNum, charNum, LogPri.WARNING);
         cmt = source;
       } else {
-        cmt = source.substr(0, index+2);
+        cmt = source.substr(0, closeIndex+2);
       }
       let numLines = cmt.split('\n').length-1; //Number of lines in the comment
       //Add number of lines in comment to total lineNum
@@ -94,14 +92,14 @@ function tokenizeInput() {
         //If the comment is one line, add it to charNum
         charNum += cmt.length;
       }
-      if (index === -1) {
+      if (closeIndex === -1) {
         token = getTokens(source.substring(source.length), last);
       } else {
         token = getTokens(source.substring(cmt.length), last);
       }
     } else if (/^\*\//.test(source)) {
-      Log.print("LEXER: ERROR: Unmatched '*/' encountered on line " + lineNum
-        + ". Did you mean '/*'?", LogPri.ERROR);
+      Log.LexMsg("Unmatched '*/' encountered", lineNum, charNum,
+        LogPri.ERROR, "Did you mean '/*'?");
       charNum += 2;
       getTokens(source.substring(2), last);
     } else if (/^[a-z]/.test(source)) {
@@ -154,8 +152,8 @@ function tokenizeInput() {
         let index = source.indexOf("\"", 1);
         if (index === -1) {
           numWarns++;
-          Log.print("LEXER: WARNING: Unclosed String literal on line " + lineNum
-            + ". Adding closing quote...", LogPri.WARNING);
+          Log.LexMsg("Unclosed String literal", lineNum, charNum, LogPri.WARNING,
+            "Adding closing quote...");
           str = source.substr(0) + "\"";
           index = source.length-1;
         } else {
@@ -170,10 +168,9 @@ function tokenizeInput() {
         } else {
           //The string contains invalid charaters
           numErrors++;
-          Log.print("LEXER: ERROR: String literal '" + str +
-            "' at line:" + lineNum + " col:" + charNum +
-            " contains invalid characters. " +
-            "Strings can contain lowercase letters and spaces.", LogPri.ERROR);
+          Log.LexMsg("String literal '" + str + "' contains invalid characters",
+            lineNum, charNum, LogPri.ERROR,
+            "Strings can contain lowercase letters and spaces.");
           charNum += str.length;
           return getTokens(source.substring(index+1), token);
         }
@@ -211,8 +208,8 @@ function tokenizeInput() {
         return getTokens(source.substring(1), last);
       default:
         numErrors++;
-        Log.print("LEXER: ERROR: Unidentified token '" + source.charAt(0) +
-          "' encountered on line " + lineNum, LogPri.ERROR);
+        Log.LexMsg("Unidentified token '" + source.charAt(0) + "'",
+          lineNum, charNum, LogPri.ERROR);
         return getTokens(source.substring(1), last);
     }
   }
@@ -220,14 +217,15 @@ function tokenizeInput() {
   function createToken(chars: string, name: string, last?: Token, value?) {
     let token: Token;
     if (value === undefined) {
-      token = new Token(name);
+      token = new Token(name, lineNum, charNum);
     } else {
-      token = new Token(name, value);
+      token = new Token(name, lineNum, charNum, value);
     }
     if (last !== undefined) {
       last.next = token;
+      token.prev = last;
     }
-    Log.print(`LEXER: '${chars}' --> [${name}] at line:${lineNum} col:${charNum}`);
+    Log.LexMsg(`'${chars}' --> [${name}]`, lineNum, charNum);
     return token;
   }
 
