@@ -101,7 +101,7 @@ function tokenizeInput() {
       Log.LexMsg("Unmatched '*/' encountered", lineNum, charNum,
         LogPri.ERROR, "Did you mean '/*'?");
       charNum += 2;
-      getTokens(source.substring(2), last);
+      token = getTokens(source.substring(2), last);
     } else if (/^[a-z]/.test(source)) {
       //The first character is a lowercase letter
       token = createToken(source.charAt(0), "ID", last, source.charAt(0));
