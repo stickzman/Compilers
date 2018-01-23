@@ -70,13 +70,12 @@ function tokenizeInput() {
         numWarns++;
         Log.print("LEXER: WARNING: Unclosed comment block on line " + lineNum,
           LogPri.WARNING);
-        getTokens(source.substring(source.length), last);
+        return getTokens(source.substring(source.length), last);
       } else {
         //Add number of lines in comment to total lineNum
         lineNum += source.substr(0, index+2).split('\n').length-1;
-        getTokens(source.substring(index+2));
+        return getTokens(source.substring(index+2));
       }
-      return;
     } else if (/^\*\//.test(source)) {
       Log.print("LEXER: ERROR: Unmatched '*/' encountered on line " + lineNum
         + ". Did you mean '/*'?", LogPri.ERROR);
@@ -101,23 +100,23 @@ function tokenizeInput() {
         token = createToken("{", "LBRACE", last);
         //Get the rest of the tokens recursively
         getTokens(source.substring(1), token);
-        break;
+        return token;
       case '}':
         token = createToken("}", "RBRACE", last);
         getTokens(source.substring(1), token);
-        break;
+        return token;
       case '(':
         token = createToken("(", "LPAREN", last);
         getTokens(source.substring(1), token);
-        break;
+        return token;
       case ')':
         token = createToken(")", "RPAREN", last);
         getTokens(source.substring(1), token);
-        break;
+        return token;
       case '$':
         token = createToken("$", "EOP", last);
         getTokens(source.substring(1), token);
-        break;
+        return token;
       case '"':
         //Find entire string literal
         let str;
@@ -141,43 +140,40 @@ function tokenizeInput() {
           Log.print("LEXER: ERROR: String literal '" + str +
             "' on line " + lineNum + " contains invalid characters. " +
             "Strings can contain lowercase letters and spaces.", LogPri.ERROR);
-          getTokens(source.substring(index+1), token);
+          return getTokens(source.substring(index+1), token);
         }
-        break;
+        return token;
       case '+':
         token = createToken("+", "INTOP", last);
         getTokens(source.substring(1), token);
-        break;
+        return token;
       case '=':
         token = createToken("=", "ASSIGN", last);
         getTokens(source.substring(1), token);
-        break;
+        return token;
       case ' ':
         //Skip whitespace
-        getTokens(source.substring(1), last);
-        break;
+        return getTokens(source.substring(1), last);
       case '\s':
         //Skip whitespace
-        getTokens(source.substring(1), last);
-        break;
+        return getTokens(source.substring(1), last);
       case '\t':
         //Skip whitespace
-        getTokens(source.substring(1), last);
-        break;
+        return getTokens(source.substring(1), last);
       case '\n':
         lineNum++;
         //Skip whitespace
-        getTokens(source.substring(1), last);
-        break;
+        return getTokens(source.substring(1), last);
+      case '\r':
+        lineNum++;
+        //Skip whitespace
+        return getTokens(source.substring(1), last);
       default:
         numErrors++;
         Log.print("LEXER: ERROR: Unidentified token '" + source.charAt(0) +
           "' encountered on line " + lineNum, LogPri.ERROR);
-        getTokens(source.substring(1), last);
-        break;
+        return getTokens(source.substring(1), last);
     }
-
-    return token;
   }
 
   function createToken(chars: string, name: string, last?: Token, value?) {
