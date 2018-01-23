@@ -27,38 +27,38 @@ function tokenizeInput() {
 
     let token: Token;
 
-    //Look for all multi-character tokens
-    if (source.substr(0, 5) === "print") {
+    //Look for all multi-character tokens using RegExp
+    if (/^print/.test(source)) {
       token = createToken("print", "PRINT", last);
       getTokens(source.substring(5), token);
-    } else if (source.substr(0, 5) === "while") {
+    } else if (/^while/.test(source)) {
       token = createToken("while", "WHILE", last);
       getTokens(source.substring(5), token);
-    } else if (source.substr(0, 2) === "if") {
+    } else if (/^if/.test(source)) {
       token = createToken("if", "IF", last);
       getTokens(source.substring(2), token);
-    } else if (source.substr(0, 3) === "int") {
+    } else if (/^int/.test(source)) {
       token = createToken("int", "INT", last);
       getTokens(source.substring(3), token);
-    } else if (source.substr(0, 6) === "string") {
+    } else if (/^string/.test(source)) {
       token = createToken("string", "STRING", last);
       getTokens(source.substring(6), token);
-    } else if (source.substr(0, 7) === "boolean") {
+    } else if (/^boolean/.test(source)) {
       token = createToken("boolean", "BOOLEAN", last);
       getTokens(source.substring(7), token);
-    } else if (source.substr(0, 5) === "false") {
+    } else if (/^false/.test(source)) {
       token = createToken("false", "FALSE", last);
       getTokens(source.substring(5), token);
-    } else if (source.substr(0, 4) === "true") {
+    } else if (/^true/.test(source)) {
       token = createToken("true", "TRUE", last);
       getTokens(source.substring(4), token);
-    } else if (source.substr(0, 2) === "==") {
+    } else if (/^==/.test(source)) {
       token = createToken("==", "EQUAL", last);
       getTokens(source.substring(2), token);
-    } else if (source.substr(0, 2) === "!=") {
+    } else if (/^!=/.test(source)) {
       token = createToken("!=", "NOTEQUAL", last);
       getTokens(source.substring(2), token);
-    } else if (source.substr(0, 2) === "/*") {
+    } else if (/^\/\*/.test(source)) {
       //Skip to end of comment
       let index = source.indexOf("*/");
       if (index === -1) {
@@ -77,6 +77,10 @@ function tokenizeInput() {
         getTokens(source.substring(index+2));
       }
       return;
+    } else if (/^\*\//.test(source)) {
+      Log.print("LEXER: ERROR: Unmatched '*/' encountered on line " + lineNum
+        + ". Did you mean '/*'?", LogPri.ERROR);
+      getTokens(source.substring(2), last);
     } else if (/^[a-z]/.test(source)) {
       //The first character is a lowercase letter
       token = createToken(source.charAt(0), "ID", last, source.charAt(0));
@@ -167,16 +171,9 @@ function tokenizeInput() {
         break;
       default:
         numErrors++;
-        //Check error token to give more information
-        if (source.substr(0, 2) === "*/") {
-          Log.print("LEXER: ERROR: Unmatched '*/' encountered on line " + lineNum
-            +". Did you mean '/*'?", LogPri.ERROR);
-          getTokens(source.substring(2), last);
-        } else {
-          Log.print("LEXER: ERROR: Unidentified token '" + source.charAt(0) +
+        Log.print("LEXER: ERROR: Unidentified token '" + source.charAt(0) +
           "' encountered on line " + lineNum, LogPri.ERROR);
-          getTokens(source.substring(1), last);
-        }
+        getTokens(source.substring(1), last);
         break;
     }
 
