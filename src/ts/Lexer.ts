@@ -4,6 +4,7 @@ function tokenizeInput() {
 
   Log.clear();
   let lineNum: number = 1;
+  let charNum: number = 1;
   let numWarns: number = 0;
   let numErrors: number = 0;
 
@@ -162,10 +163,12 @@ function tokenizeInput() {
         return getTokens(source.substring(1), last);
       case '\n':
         lineNum++;
+        charNum = 1;
         //Skip whitespace
         return getTokens(source.substring(1), last);
       case '\r':
         lineNum++;
+        charNum = 1;
         //Skip whitespace
         return getTokens(source.substring(1), last);
       default:
@@ -186,7 +189,8 @@ function tokenizeInput() {
     if (last !== undefined) {
       last.next = token;
     }
-    Log.print(`LEXER: '${chars}' --> [${name}]`);
+    Log.print(`LEXER: '${chars}' --> [${name}] at line:${lineNum} col:${charNum}`);
+    charNum += chars.length;
     return token;
   }
 
