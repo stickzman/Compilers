@@ -216,11 +216,7 @@ function tokenizeInput() {
 
   function createToken(chars: string, name: string, last: Token, value?) {
     let token: Token;
-    if (value === undefined) {
-      token = new Token(name, lineNum, charNum);
-    } else {
-      token = new Token(name, lineNum, charNum, value);
-    }
+    token = new Token(name, lineNum, charNum, value);
     if (last !== undefined) {
       last.next = token;
       token.prev = last;

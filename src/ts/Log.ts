@@ -44,7 +44,7 @@ class Log {
         str += "WARNING: ";
         break;
     }
-    str += msg + ` at line: ${line} col:${col}.`;
+    str += msg + ` at line: ${line} col: ${col}.`;
     if (hint !== undefined) {
       str += " " + hint;
     }
