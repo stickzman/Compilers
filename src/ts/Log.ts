@@ -1,10 +1,12 @@
 /// <reference path="Helper.ts"/>
 class Log {
-  private static level: LogPri = LogPri.VERBOSE;
+  private static level: LogPri;
   public static logElem: HTMLInputElement;
 
   public static init() {
     Log.logElem = <HTMLInputElement>document.getElementById("log");
+    let prioityElem = <HTMLInputElement>document.getElementById("prioritySelect");
+    Log.updateLevel(prioityElem.value);
   }
 
   public static print(msg: string, priority: LogPri = LogPri.VERBOSE) {

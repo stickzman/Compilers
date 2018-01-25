@@ -214,7 +214,7 @@ function tokenizeInput() {
     }
   }
 
-  function createToken(chars: string, name: string, last?: Token, value?) {
+  function createToken(chars: string, name: string, last: Token, value?) {
     let token: Token;
     if (value === undefined) {
       token = new Token(name, lineNum, charNum);
