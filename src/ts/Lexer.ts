@@ -11,7 +11,9 @@ function tokenizeInput() {
   //Begin generating tokens from source code
   let first = getTokens(source);
 
-  Log.print("");
+  if (!Log.isClear()) {
+    Log.print("");
+  }
   Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
 
 
@@ -221,7 +223,7 @@ function tokenizeInput() {
       last.next = token;
       token.prev = last;
     }
-    Log.LexMsg(`'${chars}' --> [${name}]`, lineNum, charNum);
+    Log.LexMsg(`'${chars}' --> [${name}]`, lineNum, charNum, LogPri.VERBOSE);
     return token;
   }
 

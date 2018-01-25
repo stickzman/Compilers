@@ -9,7 +9,7 @@ class Log {
     Log.updateLevel(prioityElem.value);
   }
 
-  public static print(msg: string, priority: LogPri = LogPri.VERBOSE) {
+  public static print(msg: string, priority: LogPri = LogPri.INFO) {
     if (priority >= Log.level) {
       Log.logElem.value = Log.logElem.value + msg + "\n";
     }
@@ -24,6 +24,9 @@ class Log {
       case "VERBOSE":
         Log.level = LogPri.VERBOSE;
         break;
+      case "INFO":
+        Log.level = LogPri.INFO;
+        break;
       case "WARNING":
         Log.level = LogPri.WARNING;
         break;
@@ -34,7 +37,7 @@ class Log {
   }
 
   public static LexMsg(msg: string, line: number, col: number,
-      priority: LogPri = LogPri.VERBOSE, hint?: string) {
+      priority: LogPri = LogPri.INFO, hint?: string) {
     let str = "LEXER: ";
     switch (priority) {
       case LogPri.ERROR:
@@ -49,6 +52,10 @@ class Log {
       str += " " + hint;
     }
     Log.print(str, priority);
+  }
+
+  public static isClear(): boolean {
+    return Log.logElem.value == "";
   }
 
 }
