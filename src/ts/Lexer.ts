@@ -1,3 +1,4 @@
+/// <reference path="Helper.ts"/>
 function tokenizeInput() {
   //Get source code
   let source = (<HTMLInputElement>document.getElementById("source")).value;
@@ -81,11 +82,11 @@ function tokenizeInput() {
       } else {
         cmt = source.substr(0, closeIndex+2);
       }
-      let numLines = cmt.split(/[\n\r]/).length-1; //Number of lines in the comment
+      let numLines = countLines(cmt); //Number of lines in the comment
       //Add number of lines in comment to total lineNum
       lineNum += numLines;
       //Get the index of the last new line character
-      let newLineIndex = Math.max(cmt.lastIndexOf('\n'), cmt.lastIndexOf('\r'));
+      let newLineIndex = lastIndexOfNewLine(cmt);
       if (newLineIndex === -1) {
         //If the comment is one line, add it to charNum
         charNum += cmt.length;
@@ -149,19 +150,28 @@ function tokenizeInput() {
         let index = source.indexOf('"', 1);
         if (index === -1) {
           numWarns++;
-          Log.LexMsg("Unclosed String literal",lineNum, charNum, LogPri.WARNING,
+          Log.LexMsg("Unclosed String literal", lineNum, charNum, LogPri.WARNING,
             "Adding closing quote...");
           str = source.substr(0) + '"';
           index = source.length - 1;
         } else {
           str = source.substr(0, index+1);
         }
+        //Count line breaks in any comments
+        let numLines = countLines(str);
+        //Adjust colNumber according to possible comment new numLines
+        let numCols = str.length;
+        if (numLines > 0) {
+          let i = lastIndexOfNewLine(str) + 1;
+          numCols -= i;
+        }
         //Remove any comments from the string literal
         str = str.replace(/\/\*(.|\n|\r)*\*\//, "");
         if (/^[a-z" ]*$/.test(str)) {
           //The string literal contains only valid characters
           token = createToken(str, "STRLIT", last, str);
-          charNum += str.length;
+          charNum += numCols;
+          lineNum += numLines;
           getTokens(source.substring(index+1), token);
           return token;
         } else {
@@ -170,7 +180,8 @@ function tokenizeInput() {
           Log.LexMsg("String literal '" + str + "' contains invalid characters",
             lineNum, charNum, LogPri.ERROR,
             "Strings can contain lowercase letters and spaces.");
-          charNum += str.length;
+          charNum += numCols;
+          lineNum += numLines;
           return getTokens(source.substring(index+1), token);
         }
       case '+':
