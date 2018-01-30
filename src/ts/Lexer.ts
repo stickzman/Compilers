@@ -11,9 +11,7 @@ function tokenizeInput() {
   //Begin generating tokens from source code
   let first = getTokens(source);
 
-  if (!Log.isClear()) {
-    Log.print("");
-  }
+  Log.print("", LogPri.VERBOSE);
   Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
 
 
@@ -83,22 +81,19 @@ function tokenizeInput() {
       } else {
         cmt = source.substr(0, closeIndex+2);
       }
-      let numLines = cmt.split('\n').length-1; //Number of lines in the comment
+      let numLines = cmt.split(/[\n\r]/).length-1; //Number of lines in the comment
       //Add number of lines in comment to total lineNum
       lineNum += numLines;
-      let newLineIndex = cmt.lastIndexOf('\n');
-      if (newLineIndex !== -1) {
-        //Set charNum to the number of characters on the last line (including "*/")
-        charNum = cmt.length - newLineIndex;
-      } else {
+      //Get the index of the last new line character
+      let newLineIndex = Math.max(cmt.lastIndexOf('\n'), cmt.lastIndexOf('\r'));
+      if (newLineIndex === -1) {
         //If the comment is one line, add it to charNum
         charNum += cmt.length;
-      }
-      if (closeIndex === -1) {
-        token = getTokens(source.substring(source.length), last);
       } else {
-        token = getTokens(source.substring(cmt.length), last);
+        //Set charNum to the number of characters on the last line
+        charNum = cmt.length - newLineIndex;
       }
+      token = getTokens(source.substring(cmt.length), last);
     } else if (/^\*\//.test(source)) {
       Log.LexMsg("Unmatched '*/' encountered", lineNum, charNum,
         LogPri.ERROR, "Did you mean '/*'?");
@@ -151,16 +146,18 @@ function tokenizeInput() {
       case '"':
         //Find entire string literal
         let str;
-        let index = source.indexOf("\"", 1);
+        let index = source.indexOf('"', 1);
         if (index === -1) {
           numWarns++;
-          Log.LexMsg("Unclosed String literal", lineNum, charNum, LogPri.WARNING,
+          Log.LexMsg("Unclosed String literal",lineNum, charNum, LogPri.WARNING,
             "Adding closing quote...");
-          str = source.substr(0) + "\"";
-          index = source.length-1;
+          str = source.substr(0) + '"';
+          index = source.length - 1;
         } else {
           str = source.substr(0, index+1);
         }
+        //Remove any comments from the string literal
+        str = str.replace(/\/\*(.|\n|\r)*\*\//, "");
         if (/^[a-z" ]*$/.test(str)) {
           //The string literal contains only valid characters
           token = createToken(str, "STRLIT", last, str);
