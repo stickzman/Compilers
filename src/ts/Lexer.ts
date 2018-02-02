@@ -12,7 +12,9 @@ function tokenizeInput() {
   //Begin generating tokens from source code
   let first = getTokens(source);
 
-  Log.print("", LogPri.VERBOSE);
+  if (!Log.isClear()) {
+    Log.print("");
+  }
   Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
 
 

@@ -3,12 +3,24 @@
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 <script type="text/javascript" src="bin/compiler.js"></script>
 
-<body onload="Log.init()">
+<body onload="init()">
 	<div class="container py-2">
 		<h1 align="center">Daniel Ahl's Compiler</h1>
 		<div class="row py-1">
 			<div class="col">
-				<label><b>Console</b></label>
+				<div class="row">
+					<div class="col">
+						<label><b>Console</b></label>
+					</div>
+					<div class="col">
+						<label class="form-text" align="right">Programs:</label>
+					</div>
+					<div class="col-5">
+						<select id="progSel" class="form-control" onchange="loadProgram(this.value)">
+							<option disabled hidden selected>Select One</option>
+						</select>
+					</div>
+				</div>
 			</div>
 			<div class="col">
 				<div class="row">
