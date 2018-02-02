@@ -1,3 +1,4 @@
+//All test cases names and source code to be displayed in console panel
 let tests = {
   "Alan Test Case":
     "/*  Provided By \n  - Alan G Labouseur\n*/\n{}$\t\n{{{{{{}}}}}}$\t\n{{{{{{}}}}}}}$\t\n{int\t@}$",

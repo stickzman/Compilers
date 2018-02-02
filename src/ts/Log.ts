@@ -11,7 +11,7 @@ class Log {
 
   public static print(msg: string, priority: LogPri = LogPri.INFO) {
     if (priority >= Log.level) {
-      Log.logElem.value = Log.logElem.value + msg + "\n";
+      Log.logElem.value += " " + msg + "\n";
     }
   }
 
