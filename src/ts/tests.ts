@@ -21,5 +21,7 @@ let tests = {
   "Multiple Comments in String":
     "/* All comments removed from string*/\n{\"one/*1234*/ /*test*/lin/**/e/**/\"}$",
   "Missing $":
-    "/*Missing \'$\' from end of program*/\n/*Lexer throws warning and fixes*/\n\n{print(\"test\")}"
+    "/*Missing \'$\' from end of program*/\n/*Lexer throws warning and fixes*/\n\n{print(\"test\")}",
+  "Keywords and Special Chars, No Whitespace":
+    "{}print()whileif\"\"intstringbooleanabc123==!=falsetrue+/**/=$"
 };
