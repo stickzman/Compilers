@@ -162,11 +162,11 @@ function tokenizeInput() {
         //Adjust colNumber according to possible comment new numLines
         let numCols = str.length;
         if (numLines > 0) {
-          let i = lastIndexOfNewLine(str) + 1;
-          numCols -= i;
+          numCols -= lastIndexOfNewLine(str) + 1;
         }
-        //Remove any comments from the string literal
-        str = str.replace(/\/\*(.|\n|\r)*\*\//, "");
+        //Remove all comments from the string literal
+        str = str.replace(/\/\*(.|\n|\r)[^\*\/]*\*\//g, "");
+        str = str.replace(/\/\*\*\//g, "") //Remove remaining "empty" comments
         if (/^[a-z" ]*$/.test(str)) {
           //The string literal contains only valid characters
           token = createToken(str, "STRLIT", last, str);
@@ -179,7 +179,7 @@ function tokenizeInput() {
           numErrors++;
           Log.LexMsg("String literal '" + str + "' contains invalid characters",
             lineNum, charNum, LogPri.ERROR,
-            "Strings can contain lowercase letters and spaces.");
+            "Strings can only contain lowercase letters and spaces.");
           charNum += numCols;
           lineNum += numLines;
           return getTokens(source.substring(index+1), token);
