@@ -11,7 +11,10 @@ let tests = {
     "Comment \\n in String": "/* Valid because break line wrapped in comment*/\n{\"two/*\n*/lines\"}$",
     "Multiple Comments in String": "/* All comments removed from string*/\n{\"one/*1234*/ /*test*/lin/**/e/**/\"}$",
     "Missing $": "/*Missing \'$\' from end of program*/\n/*Lexer throws warning and fixes*/\n\n{print(\"test\")}",
-    "Keywords and Special Chars, No Whitespace": "{}print()whileif\"\"intstringbooleanabc123==!=falsetrue+/**/=$"
+    "Keywords and Special Chars, No Whitespace": "{}print()whileif\"\"intstringbooleanabc123==!=falsetrue+/**/=$",
+    "Unclosed Comment": "{ /* Unclosed comment block, throws warning \n\tprint(\"the cake is a lie\")\n}$",
+    "Unmatched Quote ERROR": "/* Unmatched quote.\nThrows error because it finds non-valid characters */\n{\n\"test string\n}$",
+    "Unmatched Quote WARNING": "/* Unmatched quote.\nLexer throws warning because all following characters are\nallowed in a character list.\nMissing quote token should create error in Parse */\n\n\"this test string technically contains no banned characters"
 };
 /// <reference path="tests.ts"/>
 //Level of priority for a log message
