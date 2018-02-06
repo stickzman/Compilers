@@ -1,6 +1,5 @@
 class Token {
   public next: Token;
-  public prev: Token;
 
   constructor(public name: string, public line, public col, public value?) {}
 

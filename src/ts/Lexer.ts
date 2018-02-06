@@ -231,7 +231,6 @@ function tokenizeInput() {
     token = new Token(name, lineNum, charNum, value);
     if (last !== undefined) {
       last.next = token;
-      token.prev = last;
     }
     Log.LexMsg(`'${chars}' --> [${name}]`, lineNum, charNum, LogPri.VERBOSE);
     return token;
