@@ -1,12 +1,23 @@
 /// <reference path="Helper.ts"/>
 class Log {
-  private static level: LogPri;
+  private static level: LogPri = LogPri.VERBOSE;
   public static logElem: HTMLInputElement;
 
   public static init() {
     Log.logElem = <HTMLInputElement>document.getElementById("log");
-    let prioityElem = <HTMLInputElement>document.getElementById("prioritySelect");
-    Log.updateLevel(prioityElem.value);
+    let prioityElem = <HTMLSelectElement>document.getElementById("prioritySelect");
+    let opt;
+    for (let item in LogPri) {
+      //Add all options in enum to dropdown
+      if (isNaN(Number(item))) {
+        opt = document.createElement("option");
+        opt.text = item;
+        opt.value = item;
+        prioityElem.add(opt);
+      }
+    }
+    //Set dropdown to default level
+    prioityElem.selected = Log.level.toString();
   }
 
   public static print(msg: string, priority: LogPri = LogPri.INFO) {

@@ -296,7 +296,18 @@ class Log {
     static init() {
         Log.logElem = document.getElementById("log");
         let prioityElem = document.getElementById("prioritySelect");
-        Log.updateLevel(prioityElem.value);
+        let opt;
+        for (let item in LogPri) {
+            //Add all options in enum to dropdown
+            if (isNaN(Number(item))) {
+                opt = document.createElement("option");
+                opt.text = item;
+                opt.value = item;
+                prioityElem.add(opt);
+            }
+        }
+        //Set dropdown to default level
+        prioityElem.selected = Log.level.toString();
     }
     static print(msg, priority = LogPri.INFO) {
         if (priority >= Log.level) {
@@ -342,6 +353,7 @@ class Log {
         return Log.logElem.value == "";
     }
 }
+Log.level = LogPri.VERBOSE;
 class Token {
     constructor(name, line, col, value) {
         this.name = name;
