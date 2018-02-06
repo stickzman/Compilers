@@ -147,45 +147,51 @@ function tokenizeInput() {
         getTokens(source.substring(1), token);
         return token;
       case '"':
-        //Find entire string literal
-        let str;
-        let index = source.indexOf('"', 1);
-        if (index === -1) {
+        token = createToken('"', "QUOTE", last);
+        charNum++;
+        //Find list of characters inside string
+        let charList;
+        let endInd = source.indexOf('"', 1);
+        if (endInd === -1) {
           numWarns++;
-          Log.LexMsg("Unclosed String literal", lineNum, charNum, LogPri.WARNING,
-            "Adding closing quote...");
-          str = source.substr(0) + '"';
-          index = source.length - 1;
+          Log.LexMsg("Unclosed String literal", lineNum, charNum, LogPri.WARNING);
+          charList = source.substr(1);
         } else {
-          str = source.substr(0, index+1);
+          charList = source.substring(1, endInd);
         }
         //Count line breaks in any comments
-        let numLines = countLines(str);
+        let numLines = countLines(charList);
         //Adjust colNumber according to possible comment new numLines
-        let numCols = str.length;
+        let numCols = charList.length;
         if (numLines > 0) {
-          numCols -= lastIndexOfNewLine(str) + 1;
+          numCols -= lastIndexOfNewLine(charList) + 1;
         }
-        //Remove all comments from the string literal
-        str = str.replace(/\/\*(.|\n|\r)[^\*\/]*\*\//g, "");
-        str = str.replace(/\/\*\*\//g, "") //Remove remaining "empty" comments
-        if (/^[a-z" ]*$/.test(str)) {
-          //The string literal contains only valid characters
-          token = createToken(str, "STRLIT", last, str);
-          charNum += numCols;
+        let totalLen = charList.length; //Length of charList b4 removing comments
+        //Remove all comments from the character list
+        charList = charList.replace(/\/\*(.|\n|\r)[^\*\/]*\*\//g, "");
+        charList = charList.replace(/\/\*\*\//g, "") //Remove remaining "empty" comments
+        let charTok: Token;
+        if (/^[a-z ]*$/.test(charList)) {
+          //If character list contains only valid tokens
+          //wrap entire list in single token.
+          charTok = createToken(charList, "CHARLIST", token, charList);
           lineNum += numLines;
-          getTokens(source.substring(index+1), token);
-          return token;
+          charNum += numCols;
         } else {
-          //The string contains invalid charaters
           numErrors++;
-          Log.LexMsg("String literal '" + str + "' contains invalid characters",
+          Log.LexMsg("Character list '" + charList + "' contains invalid characters",
             lineNum, charNum, LogPri.ERROR,
-            "Strings can only contain lowercase letters and spaces.");
-          charNum += numCols;
-          lineNum += numLines;
-          return getTokens(source.substring(index+1), token);
+            "It can only contain lowercase letters and spaces.");
+          return token;
         }
+        if (endInd === -1) {
+          getTokens(source.substring(totalLen+1), token);
+        } else {
+          let endQuote = createToken('"', "QUOTE", charTok);
+          charNum++;
+          getTokens(source.substring(totalLen+2), endQuote);
+        }
+        return token;
       case '+':
         token = createToken("+", "INTOP", last);
         charNum += 1;
@@ -232,7 +238,7 @@ function tokenizeInput() {
     if (last !== undefined) {
       last.next = token;
     }
-    Log.LexMsg(`'${chars}' --> [${name}]`, lineNum, charNum, LogPri.VERBOSE);
+    Log.LexMsg(`[${chars}] --> ${name}`, lineNum, charNum, LogPri.VERBOSE);
     return token;
   }
 
