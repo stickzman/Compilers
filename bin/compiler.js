@@ -46,12 +46,10 @@ function loadProgram(name) {
     source.value = tests[name];
 }
 /// <reference path="Helper.ts"/>
-function tokenizeInput() {
-    //Get source code
-    let source = document.getElementById("source").value;
-    Log.clear();
+function Lex(source) {
+    const COL_BEGIN = 0;
     let lineNum = 1;
-    let charNum = 1;
+    let charNum = COL_BEGIN;
     let numWarns = 0;
     let numErrors = 0;
     //Begin generating tokens from source code
@@ -60,6 +58,7 @@ function tokenizeInput() {
         Log.print("");
     }
     Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
+    return first; //Return the completed linked list
     function getTokens(source, last) {
         if (source.length <= 0) {
             if (last === undefined || last.name === "EOP") {
@@ -151,8 +150,7 @@ function tokenizeInput() {
         }
         else if (/^\*\//.test(source)) {
             Log.LexMsg("Unmatched '*/' encountered", lineNum, charNum, LogPri.ERROR, "Did you mean '/*'?");
-            charNum += 2;
-            token = getTokens(source.substring(2), last);
+            return null;
         }
         else if (/^[a-z]/.test(source)) {
             //The first character is a lowercase letter
@@ -268,18 +266,19 @@ function tokenizeInput() {
                 return getTokens(source.substring(1), last);
             case '\n':
                 lineNum++;
-                charNum = 1;
+                charNum = COL_BEGIN;
                 //Skip whitespace
                 return getTokens(source.substring(1), last);
             case '\r':
                 lineNum++;
-                charNum = 1;
+                charNum = COL_BEGIN;
                 //Skip whitespace
                 return getTokens(source.substring(1), last);
             default:
                 numErrors++;
-                Log.LexMsg("Unidentified token '" + source.charAt(0) + "'", lineNum, charNum, LogPri.ERROR);
-                return getTokens(source.substring(1), last);
+                Log.LexMsg("Unidentified character '" + source.charAt(0) + "'", lineNum, charNum, LogPri.ERROR);
+                return null;
+                ;
         }
     }
     function createToken(chars, name, last, value) {
@@ -358,5 +357,11 @@ class Token {
             return this.name, this.value;
         }
     }
+}
+function compile() {
+    //Get source code
+    let source = document.getElementById("source").value;
+    Log.clear();
+    let firstToken = Lex(source);
 }
 //# sourceMappingURL=compiler.js.map

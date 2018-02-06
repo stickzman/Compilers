@@ -1,11 +1,9 @@
 /// <reference path="Helper.ts"/>
-function tokenizeInput() {
-  //Get source code
-  let source = (<HTMLInputElement>document.getElementById("source")).value;
+function Lex(source: string) {
+  const COL_BEGIN = 0;
 
-  Log.clear();
   let lineNum: number = 1;
-  let charNum: number = 1;
+  let charNum: number = COL_BEGIN;
   let numWarns: number = 0;
   let numErrors: number = 0;
 
@@ -16,6 +14,9 @@ function tokenizeInput() {
     Log.print("");
   }
   Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
+
+  return first; //Return the completed linked list
+
 
 
   function getTokens(source: string, last?: Token): Token {
@@ -100,8 +101,7 @@ function tokenizeInput() {
     } else if (/^\*\//.test(source)) {
       Log.LexMsg("Unmatched '*/' encountered", lineNum, charNum,
         LogPri.ERROR, "Did you mean '/*'?");
-      charNum += 2;
-      token = getTokens(source.substring(2), last);
+      return null;
     } else if (/^[a-z]/.test(source)) {
       //The first character is a lowercase letter
       token = createToken(source.charAt(0), "ID", last, source.charAt(0));
@@ -216,19 +216,19 @@ function tokenizeInput() {
         return getTokens(source.substring(1), last);
       case '\n':
         lineNum++;
-        charNum = 1;
+        charNum = COL_BEGIN;
         //Skip whitespace
         return getTokens(source.substring(1), last);
       case '\r':
         lineNum++;
-        charNum = 1;
+        charNum = COL_BEGIN;
         //Skip whitespace
         return getTokens(source.substring(1), last);
       default:
         numErrors++;
-        Log.LexMsg("Unidentified token '" + source.charAt(0) + "'",
+        Log.LexMsg("Unidentified character '" + source.charAt(0) + "'",
           lineNum, charNum, LogPri.ERROR);
-        return getTokens(source.substring(1), last);
+        return null;;
     }
   }
 
