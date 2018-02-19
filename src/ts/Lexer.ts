@@ -238,7 +238,7 @@ function lex(source: string): Token {
 
   function createToken(chars: string, name: string, last: Token, value?) {
     let token: Token;
-    token = new Token(name, lineNum, charNum, value);
+    token = new Token(name, chars, lineNum, charNum, value);
     if (last !== undefined) {
       last.next = token;
     }

@@ -297,7 +297,7 @@ function lex(source) {
     }
     function createToken(chars, name, last, value) {
         let token;
-        token = new Token(name, lineNum, charNum, value);
+        token = new Token(name, chars, lineNum, charNum, value);
         if (last !== undefined) {
             last.next = token;
         }
@@ -369,13 +369,15 @@ class Log {
 }
 Log.level = LogPri.VERBOSE;
 function parse(token) {
+    let root = new TNode("Program");
     function nextToken() {
         token = token.next;
     }
 }
 class Token {
-    constructor(name, line, col, value) {
+    constructor(name, char, line, col, value) {
         this.name = name;
+        this.char = char;
         this.line = line;
         this.col = col;
         this.value = value;
