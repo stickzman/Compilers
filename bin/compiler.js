@@ -379,6 +379,8 @@ function parse(token) {
         parseStatementList(blockNode);
         match(["}"], blockNode);
     }
+    function parseStatementList(parent) {
+    }
     function nextToken() {
         token = token.next;
     }

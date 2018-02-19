@@ -12,6 +12,10 @@ function parse(token: Token) {
     match(["}"], blockNode);
   }
 
+  function parseStatementList(parent: TNode) {
+    
+  }
+
   function nextToken() {
     token = token.next;
   }
