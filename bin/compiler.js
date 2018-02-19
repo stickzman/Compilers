@@ -2,7 +2,11 @@ function compile() {
     //Get source code
     let source = document.getElementById("source").value;
     Log.clear();
-    let firstToken = Lex(source);
+    let tokenLinkedList = lex(source);
+    if (tokenLinkedList === null) {
+        return;
+    }
+    let CST = parse(tokenLinkedList);
 }
 //All test cases names and source code to be displayed in console panel
 let tests = {
@@ -52,7 +56,7 @@ function loadProgram(name) {
     source.value = tests[name];
 }
 /// <reference path="Helper.ts"/>
-function Lex(source) {
+function lex(source) {
     const COL_BEGIN = 0;
     let lineNum = 1;
     let charNum = COL_BEGIN;
@@ -64,7 +68,12 @@ function Lex(source) {
         Log.print("");
     }
     Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
-    return first; //Return the completed linked list
+    if (numErrors === 0) {
+        return first; //Return the completed linked list
+    }
+    else {
+        return null; //Return nothing if any errors occurred
+    }
     function getTokens(source, last) {
         if (source.length <= 0) {
             if (last === undefined || last.name === "EOP") {
@@ -284,7 +293,6 @@ function Lex(source) {
                 numErrors++;
                 Log.LexMsg("Unidentified character '" + source.charAt(0) + "'", lineNum, charNum, LogPri.ERROR);
                 return null;
-                ;
         }
     }
     function createToken(chars, name, last, value) {
@@ -360,6 +368,11 @@ class Log {
     }
 }
 Log.level = LogPri.VERBOSE;
+function parse(token) {
+    function nextToken() {
+        token = token.next;
+    }
+}
 class Token {
     constructor(name, line, col, value) {
         this.name = name;
@@ -374,6 +387,32 @@ class Token {
         else {
             return this.name, this.value;
         }
+    }
+}
+class TNode {
+    constructor(name) {
+        this.name = name;
+        this.children = [];
+        this.parent = null;
+    }
+    addChild(node) {
+        this.children.concat(node);
+        node.parent = this;
+    }
+    isRoot() {
+        return this.parent === null;
+    }
+    hasChildren() {
+        return this.children.length > 0;
+    }
+    getLeafNodes() {
+        let leaves = [];
+        for (let i = 0; i < this.children.length; i++) {
+            if (!this.children[i].hasChildren()) {
+                leaves.concat(this.children[i]);
+            }
+        }
+        return leaves;
     }
 }
 //# sourceMappingURL=compiler.js.map

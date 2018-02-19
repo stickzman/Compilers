@@ -4,5 +4,7 @@ function compile() {
 
   Log.clear();
 
-  let firstToken = Lex(source);
+  let tokenLinkedList = lex(source);
+  if (tokenLinkedList === null) {return;}
+  let CST = parse(tokenLinkedList);
 }

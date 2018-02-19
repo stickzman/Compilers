@@ -1,5 +1,5 @@
 /// <reference path="Helper.ts"/>
-function Lex(source: string) {
+function lex(source: string): Token {
   const COL_BEGIN = 0;
 
   let lineNum: number = 1;
@@ -15,7 +15,11 @@ function Lex(source: string) {
   }
   Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
 
-  return first; //Return the completed linked list
+  if (numErrors === 0) {
+    return first; //Return the completed linked list
+  } else {
+    return null; //Return nothing if any errors occurred
+  }
 
 
 
@@ -228,7 +232,7 @@ function Lex(source: string) {
         numErrors++;
         Log.LexMsg("Unidentified character '" + source.charAt(0) + "'",
           lineNum, charNum, LogPri.ERROR);
-        return null;;
+        return null;
     }
   }
 
