@@ -438,9 +438,9 @@ function parse(token) {
             case "LBRACE":
                 break;
             default:
-                console.log("HALP");
-                throw error(`Unexpected '${token.symbol}' found at line:${token.line} col:${token.col}`);
+                throw error(`Unexpected token '${token.symbol}' found at line:${token.line} col:${token.col}`);
         }
+        nextToken();
     }
     function branchNode(name, parent) {
         let node = new TNode(name);
