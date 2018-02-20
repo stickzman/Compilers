@@ -65,6 +65,20 @@ class Log {
     Log.print(str, priority);
   }
 
+  public static ParseMsg(msg: string, priority: LogPri = LogPri.VERBOSE) {
+    let str = "PARSER: ";
+    switch (priority) {
+      case LogPri.ERROR:
+        str += "ERROR: ";
+        break;
+      case LogPri.WARNING:
+        str += "WARNING: ";
+        break;
+    }
+    str += msg;
+    Log.print(str, priority);
+  }
+
   public static isClear(): boolean {
     return Log.logElem.value == "";
   }

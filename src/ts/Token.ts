@@ -1,7 +1,7 @@
 class Token {
   public next: Token;
 
-  constructor(public name: string, public char: string, public line, public col, public value?) {}
+  constructor(public name: string, public symbol: string, public line, public col, public value?) {}
 
   public toString(): string {
     if (this.value === undefined) {

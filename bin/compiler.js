@@ -363,48 +363,121 @@ class Log {
         }
         Log.print(str, priority);
     }
+    static ParseMsg(msg, priority = LogPri.VERBOSE) {
+        let str = "PARSER: ";
+        switch (priority) {
+            case LogPri.ERROR:
+                str += "ERROR: ";
+                break;
+            case LogPri.WARNING:
+                str += "WARNING: ";
+                break;
+        }
+        str += msg;
+        Log.print(str, priority);
+    }
     static isClear() {
         return Log.logElem.value == "";
     }
 }
 Log.level = LogPri.VERBOSE;
 function parse(token) {
-    let root = new TNode("Program");
-    parseBlock(root);
-    match(["$"], root);
+    let numWarns = 0;
+    Log.print("");
+    Log.ParseMsg("parse()");
+    //Initial parsing of Program
+    try {
+        let root = new TNode("Program");
+        parseBlock(root);
+        match(["$"], root);
+        Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
+        return root;
+    }
+    catch (e) {
+        if (e.name === "Parse_Error") {
+            Log.print(e);
+            Log.print("");
+            Log.print(`Parser completed with ${numWarns} warnings and 1 errors.`);
+            return null;
+        }
+        else {
+            //If the error is not created by my parser, continue to throw it
+            throw e;
+        }
+    }
     function parseBlock(parent) {
-        let blockNode = new TNode("Block");
-        parent.addChild(blockNode);
-        match(["{"], blockNode);
-        parseStatementList(blockNode);
-        match(["}"], blockNode);
+        Log.ParseMsg("parseBlock()");
+        let node = branchNode("Block", parent);
+        match(["{"], node);
+        parseStatementList(node);
+        match(["}"], node);
     }
     function parseStatementList(parent) {
+        Log.ParseMsg("parseStatementList()");
+        let node = branchNode("StatementList", parent);
+        if (token.name === "PRINT" || token.name === "ID" || token.name === "TYPE" ||
+            token.name === "WHILE" || token.name === "IF" || token.symbol === "{") {
+            parseStatement(node);
+            parseStatementList(node);
+        }
+    }
+    function parseStatement(parent) {
+        Log.ParseMsg("parseStatement()");
+        let node = branchNode("Statement", parent);
+        switch (token.name) {
+            case "PRINT":
+                break;
+            case "ID":
+                break;
+            case "TYPE":
+                break;
+            case "WHILE":
+                break;
+            case "IF":
+                break;
+            case "LBRACE":
+                break;
+            default:
+                console.log("HALP");
+                throw error(`Unexpected '${token.symbol}' found at line:${token.line} col:${token.col}`);
+        }
+    }
+    function branchNode(name, parent) {
+        let node = new TNode(name);
+        parent.addChild(node);
+        return node;
     }
     function nextToken() {
         token = token.next;
     }
+    //Create custom Error object
+    function error(msg) {
+        let e = new Error(msg);
+        e.name = "Parse_Error";
+        return e;
+    }
     //Matches list of tokens by characters
     //formatted as an array of strings.
     //Prints error if match not found.
-    function match(tList, parent) {
+    function match(tList, parent, symbol = true) {
+        let tokenSym;
         for (let char of tList) {
-            if (char === token.char) {
-                parent.addChild(new TNode(token.name));
+            tokenSym = (symbol) ? token.symbol : token.name;
+            if (char === tokenSym) {
+                parent.addChild(new TNode(token.symbol));
                 nextToken();
             }
             else {
-                Log.print(`Error: Expected ${char} found ${token.char}` +
+                throw error(`Expected '${char}' found '${tokenSym}'` +
                     ` at line: ${token.line} col: ${token.col}.`);
-                return;
             }
         }
     }
 }
 class Token {
-    constructor(name, char, line, col, value) {
+    constructor(name, symbol, line, col, value) {
         this.name = name;
-        this.char = char;
+        this.symbol = symbol;
         this.line = line;
         this.col = col;
         this.value = value;
