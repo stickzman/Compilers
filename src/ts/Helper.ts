@@ -12,7 +12,18 @@ function lastIndexOfNewLine(str): number {
 }
 
 function init() {
+  //Allow tabs in Console
+  let consoleElem = document.getElementById("source");
+  consoleElem.addEventListener("keydown", function (e) {
+    if (e.keyCode == 9) {
+      e.preventDefault();
+      let elem = <HTMLInputElement>this;
+      elem.value += "\t";
+    }
+  });
+  //Initialize the Log
   Log.init();
+  //Initialize the Program Select
   let progSel = <HTMLSelectElement>document.getElementById("progSel");
   let names = Object.getOwnPropertyNames(tests);
   let opt;
