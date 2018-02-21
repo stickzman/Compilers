@@ -23,6 +23,8 @@ class Log {
   public static print(msg: string, priority: LogPri = LogPri.INFO) {
     if (priority >= Log.level) {
       Log.logElem.value += " " + msg + "\n";
+      //Scroll Log to bottom when updating
+      //Log.logElem.scrollTop = Log.logElem.scrollHeight;
     }
   }
 
