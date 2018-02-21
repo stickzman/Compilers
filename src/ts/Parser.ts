@@ -10,7 +10,14 @@ function parse(token: Token) {
     let root = new TNode("Program");
     parseBlock(root);
     match(["$"], root);
+
+    //Display results
+    Log.print("");
     Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`)
+    Log.print("");
+    Log.print("CST for Program:");
+    Log.print(root.toString());
+    //Return CST
     return root;
   } catch (e) {
     if (e.name === "Parse_Error") {

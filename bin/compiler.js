@@ -7,6 +7,9 @@ function compile() {
         return;
     }
     let CST = parse(tokenLinkedList);
+    if (CST === null) {
+        return;
+    }
 }
 //All test cases names and source code to be displayed in console panel
 let tests = {
@@ -401,7 +404,13 @@ function parse(token) {
         let root = new TNode("Program");
         parseBlock(root);
         match(["$"], root);
+        //Display results
+        Log.print("");
         Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
+        Log.print("");
+        Log.print("CST for Program:");
+        Log.print(root.toString());
+        //Return CST
         return root;
     }
     catch (e) {
@@ -509,7 +518,7 @@ class TNode {
         this.parent = null;
     }
     addChild(node) {
-        this.children.concat(node);
+        this.children.push(node);
         node.parent = this;
     }
     isRoot() {
@@ -522,10 +531,33 @@ class TNode {
         let leaves = [];
         for (let i = 0; i < this.children.length; i++) {
             if (!this.children[i].hasChildren()) {
-                leaves.concat(this.children[i]);
+                leaves.push(this.children[i]);
             }
         }
         return leaves;
+    }
+    toString() {
+        let str = "";
+        if (!this.isRoot) {
+            str += "**\n";
+        }
+        function expand(node, depth) {
+            for (let i = 0; i < depth; i++) {
+                str += "-";
+            }
+            if (node.hasChildren()) {
+                str += "<" + node.name + ">\n";
+                for (let i = 0; i < node.children.length; i++) {
+                    expand(node.children[i], depth + 1);
+                }
+            }
+            else {
+                str += "[" + node.name + "]\n";
+            }
+            return;
+        }
+        expand(this, 0);
+        return str;
     }
 }
 //# sourceMappingURL=compiler.js.map
