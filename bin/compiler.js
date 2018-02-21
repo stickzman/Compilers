@@ -72,15 +72,14 @@ function loadProgram(name) {
 /// <reference path="Helper.ts"/>
 function lex(source) {
     const COL_BEGIN = 0;
+    let pgrmCount = 1;
     let lineNum = 1;
     let charNum = COL_BEGIN;
     let numWarns = 0;
     let numErrors = 0;
     //Begin generating tokens from source code
     let first = getTokens(source);
-    if (!Log.isClear()) {
-        Log.print("");
-    }
+    Log.breakLine();
     Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
     if (numErrors === 0) {
         return first; //Return the completed linked list
@@ -96,6 +95,12 @@ function lex(source) {
             numWarns++;
             Log.LexMsg("Missing EOP character '$'", lineNum, charNum, LogPri.WARNING, "Adding [EOP]...");
             return createToken("$", "EOP", last);
+        }
+        else if (last === undefined || last.name === "EOP") {
+            if (!Log.isClear()) {
+                Log.print("");
+            }
+            Log.print("Lexing Program " + pgrmCount + "...");
         }
         let token;
         //Look for all multi-character tokens using RegExp
@@ -222,6 +227,7 @@ function lex(source) {
             case '$':
                 token = createToken("$", "EOP", last);
                 charNum += 1;
+                pgrmCount++;
                 getTokens(source.substring(1), token);
                 return token;
             case '"':
@@ -391,13 +397,27 @@ class Log {
         Log.print(str, priority);
     }
     static isClear() {
-        return Log.logElem.value == "";
+        return Log.logElem.value.replace(/ /g, "") == "";
+    }
+    static isLastLineClear() {
+        let testStr = Log.logElem.value.replace(/ /g, "");
+        let i = testStr.lastIndexOf("\n");
+        if (i > 0) {
+            return testStr[i - 1] === "\n";
+        }
+        else {
+            return Log.isClear();
+        }
+    }
+    static breakLine() {
+        if (!Log.isLastLineClear())
+            Log.print("");
     }
 }
 Log.level = LogPri.VERBOSE;
 function parse(token) {
     let numWarns = 0;
-    Log.print("");
+    Log.breakLine();
     Log.ParseMsg("parse()");
     //Initial parsing of Program
     try {
@@ -405,7 +425,7 @@ function parse(token) {
         parseBlock(root);
         match(["$"], root);
         //Display results
-        Log.print("");
+        Log.breakLine();
         Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
         Log.print("");
         Log.print("CST for Program:");

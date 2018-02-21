@@ -2,7 +2,7 @@ function parse(token: Token) {
 
   let numWarns = 0;
 
-  Log.print("");
+  Log.breakLine();
   Log.ParseMsg("parse()");
 
   //Initial parsing of Program
@@ -12,11 +12,12 @@ function parse(token: Token) {
     match(["$"], root);
 
     //Display results
-    Log.print("");
+    Log.breakLine();
     Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`)
     Log.print("");
     Log.print("CST for Program:");
     Log.print(root.toString());
+    
     //Return CST
     return root;
   } catch (e) {

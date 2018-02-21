@@ -80,7 +80,21 @@ class Log {
   }
 
   public static isClear(): boolean {
-    return Log.logElem.value == "";
+    return Log.logElem.value.replace(/ /g, "") == "";
+  }
+
+  public static isLastLineClear(): boolean {
+    let testStr = Log.logElem.value.replace(/ /g, "");
+    let i = testStr.lastIndexOf("\n");
+    if (i > 0) {
+      return testStr[i-1] === "\n";
+    } else {
+      return Log.isClear();
+    }
+  }
+
+  public static addBreakLine() {
+    if (!Log.isLastLineClear()) Log.print("");
   }
 
 }

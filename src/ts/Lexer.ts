@@ -2,6 +2,7 @@
 function lex(source: string): Token {
   const COL_BEGIN = 0;
 
+  let pgrmCount: number = 1;
   let lineNum: number = 1;
   let charNum: number = COL_BEGIN;
   let numWarns: number = 0;
@@ -10,9 +11,7 @@ function lex(source: string): Token {
   //Begin generating tokens from source code
   let first = getTokens(source);
 
-  if (!Log.isClear()) {
-    Log.print("");
-  }
+  Log.breakLine();
   Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
 
   if (numErrors === 0) {
@@ -32,6 +31,9 @@ function lex(source: string): Token {
       Log.LexMsg("Missing EOP character '$'", lineNum, charNum,
         LogPri.WARNING, "Adding [EOP]...");
       return createToken("$", "EOP", last);
+    } else if (last === undefined || last.name === "EOP") {
+        if (!Log.isClear()) {Log.print("");}
+        Log.print("Lexing Program " + pgrmCount + "...");
     }
 
     let token: Token;
@@ -148,6 +150,7 @@ function lex(source: string): Token {
       case '$':
         token = createToken("$", "EOP", last);
         charNum += 1;
+        pgrmCount++;
         getTokens(source.substring(1), token);
         return token;
       case '"':
