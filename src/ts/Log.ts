@@ -93,7 +93,7 @@ class Log {
     }
   }
 
-  public static addBreakLine() {
+  public static breakLine() {
     if (!Log.isLastLineClear()) Log.print("");
   }
 

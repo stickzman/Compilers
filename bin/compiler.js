@@ -427,9 +427,9 @@ function parse(token) {
         //Display results
         Log.breakLine();
         Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
-        Log.print("");
-        Log.print("CST for Program:");
-        Log.print(root.toString());
+        Log.print("", LogPri.VERBOSE);
+        Log.print("CST for Program:", LogPri.VERBOSE);
+        Log.print(root.toString(), LogPri.VERBOSE);
         //Return CST
         return root;
     }
