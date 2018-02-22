@@ -65,7 +65,11 @@ function init() {
         if (e.keyCode == 9) {
             e.preventDefault();
             let elem = this;
-            elem.value += "\t";
+            let start = elem.selectionStart;
+            let end = elem.selectionEnd;
+            elem.value = elem.value.substring(0, start) + "\t" + elem.value.substring(end);
+            elem.selectionStart = start + 1;
+            elem.selectionEnd = start + 1;
         }
     });
 }
