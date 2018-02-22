@@ -72,7 +72,7 @@ function loadProgram(name) {
 /// <reference path="Helper.ts"/>
 function lex(source) {
     const COL_BEGIN = 0;
-    let pgrmCount = 1;
+    let pgrmNum = 1;
     let lineNum = 1;
     let charNum = COL_BEGIN;
     let numWarns = 0;
@@ -222,11 +222,11 @@ function lex(source) {
             case '$':
                 token = createToken("$", "EOP", last);
                 charNum += 1;
-                pgrmCount++;
+                pgrmNum++;
                 if (source.substring(1).replace(/\s/g, "").length > 0) {
                     //If there is more non-whitespace in the source closeIndex
                     Log.breakLine();
-                    Log.print("Lexing Program " + pgrmCount + "...");
+                    Log.print("Lexing Program " + pgrmNum + "...");
                 }
                 getTokens(source.substring(1), token);
                 return token;
@@ -419,34 +419,42 @@ class Log {
 Log.level = LogPri.VERBOSE;
 function parse(token) {
     let numWarns = 0;
-    Log.breakLine();
-    Log.ParseMsg("parse()");
-    //Initial parsing of Program
-    try {
-        let root = new TNode("Program");
-        parseBlock(root);
-        match(["$"], root);
-        //Display results
+    let pgrmNum = 0;
+    let CSTs = [];
+    while (token !== undefined) {
+        pgrmNum++;
         Log.breakLine();
-        Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
-        Log.print("", LogPri.VERBOSE);
-        Log.print("CST for Program:", LogPri.VERBOSE);
-        Log.print(root.toString(), LogPri.VERBOSE);
-        //Return CST
-        return root;
-    }
-    catch (e) {
-        if (e.name === "Parse_Error") {
-            Log.print(e);
-            Log.print("");
-            Log.print(`Parser completed with ${numWarns} warnings and 1 errors.`);
-            return null;
+        Log.print("Parsing Program " + pgrmNum + "...");
+        //Initial parsing of Program
+        try {
+            Log.ParseMsg("parse()");
+            let root = new TNode("Program");
+            parseBlock(root);
+            match(["$"], root);
+            //Display results
+            Log.breakLine();
+            Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
+            Log.print("", LogPri.VERBOSE);
+            Log.print("CST for Program " + pgrmNum + ":", LogPri.VERBOSE);
+            Log.print(root.toString(), LogPri.VERBOSE);
+            //Add CST to end of array
+            CSTs = CSTs.concat(root);
         }
-        else {
-            //If the error is not created by my parser, continue to throw it
-            throw e;
+        catch (e) {
+            if (e.name === "Parse_Error") {
+                Log.print(e);
+                Log.print("");
+                Log.print(`Parser completed with ${numWarns} warnings and 1 errors.`);
+                return null;
+            }
+            else {
+                //If the error is not created by my parser, continue to throw it
+                throw e;
+            }
         }
     }
+    //Return all completed Concrete Syntax Trees
+    return CSTs;
     function parseBlock(parent) {
         Log.ParseMsg("parseBlock()");
         let node = branchNode("Block", parent);

@@ -1,36 +1,43 @@
 function parse(token: Token) {
 
   let numWarns = 0;
+  let pgrmNum = 0;
+  let CSTs = [];
 
-  Log.breakLine();
-  Log.ParseMsg("parse()");
-
-  //Initial parsing of Program
-  try {
-    let root = new TNode("Program");
-    parseBlock(root);
-    match(["$"], root);
-
-    //Display results
+  while (token !== undefined) {
+    pgrmNum++;
     Log.breakLine();
-    Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`)
-    Log.print("", LogPri.VERBOSE);
-    Log.print("CST for Program:", LogPri.VERBOSE);
-    Log.print(root.toString(), LogPri.VERBOSE);
+    Log.print("Parsing Program " + pgrmNum + "...");
+    //Initial parsing of Program
+    try {
+      Log.ParseMsg("parse()");
+      let root = new TNode("Program");
+      parseBlock(root);
+      match(["$"], root);
 
-    //Return CST
-    return root;
-  } catch (e) {
-    if (e.name === "Parse_Error") {
-      Log.print(e);
-      Log.print("");
-      Log.print(`Parser completed with ${numWarns} warnings and 1 errors.`)
-      return null;
-    } else {
-      //If the error is not created by my parser, continue to throw it
-      throw e;
+      //Display results
+      Log.breakLine();
+      Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`)
+      Log.print("", LogPri.VERBOSE);
+      Log.print("CST for Program " + pgrmNum + ":", LogPri.VERBOSE);
+      Log.print(root.toString(), LogPri.VERBOSE);
+
+      //Add CST to end of array
+      CSTs = CSTs.concat(root);
+    } catch (e) {
+      if (e.name === "Parse_Error") {
+        Log.print(e);
+        Log.print("");
+        Log.print(`Parser completed with ${numWarns} warnings and 1 errors.`)
+        return null;
+      } else {
+        //If the error is not created by my parser, continue to throw it
+        throw e;
+      }
     }
   }
+  //Return all completed Concrete Syntax Trees
+  return CSTs;
 
   function parseBlock(parent: TNode) {
     Log.ParseMsg("parseBlock()");
