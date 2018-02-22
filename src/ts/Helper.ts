@@ -12,15 +12,6 @@ function lastIndexOfNewLine(str): number {
 }
 
 function init() {
-  //Allow tabs in Console
-  let consoleElem = document.getElementById("source");
-  consoleElem.addEventListener("keydown", function (e) {
-    if (e.keyCode == 9) {
-      e.preventDefault();
-      let elem = <HTMLInputElement>this;
-      elem.value += "\t";
-    }
-  });
   //Initialize the Log
   Log.init();
   //Initialize the Program Select
@@ -33,9 +24,25 @@ function init() {
     opt.value = names[i];
     progSel.add(opt);
   }
+
+  let consoleElem = document.getElementById("source");
+  consoleElem.addEventListener("keydown", function (e) {
+    //Reset selected program when edits are made
+    if ([33, 34, 37, 38, 39, 40].indexOf(e.keyCode) === -1) {
+      progSel.selectedIndex = 0;
+    }
+    //Allow tabs in Console
+    if (e.keyCode == 9) {
+      e.preventDefault();
+      let elem = <HTMLInputElement>this;
+      elem.value += "\t";
+    }
+  });
+
 }
 
 function loadProgram(name: string) {
+  if (name === "Select One") {return;}
   let source = <HTMLInputElement>document.getElementById("source");
   source.value = tests[name];
 }
