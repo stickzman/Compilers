@@ -17,8 +17,6 @@ function parse(token: Token) {
 
       //Display results
       Log.breakLine();
-      Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`)
-      Log.print("", LogPri.VERBOSE);
       Log.print("CST for Program " + pgrmNum + ":", LogPri.VERBOSE);
       Log.print(root.toString(), LogPri.VERBOSE);
 
@@ -36,6 +34,7 @@ function parse(token: Token) {
       }
     }
   }
+  Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
   //Return all completed Concrete Syntax Trees
   return CSTs;
 
@@ -51,7 +50,7 @@ function parse(token: Token) {
     Log.ParseMsg("parseStatementList()");
     let node = branchNode("StatementList", parent);
     let possibleTerminals = ["PRINT", "ID", "INT", "STRING", "BOOLEAN", "WHILE",
-                             "IF", "LPAREN"];
+                             "IF", "LBRACE"];
     if (possibleTerminals.indexOf(token.name) !== -1) {
           parseStatement(node);
           parseStatementList(node);
