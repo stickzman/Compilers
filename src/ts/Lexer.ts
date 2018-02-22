@@ -2,13 +2,14 @@
 function lex(source: string): Token {
   const COL_BEGIN = 0;
 
-  let pgrmCount: number = 0;
+  let pgrmCount: number = 1;
   let lineNum: number = 1;
   let charNum: number = COL_BEGIN;
   let numWarns: number = 0;
   let numErrors: number = 0;
 
   //Begin generating tokens from source code
+  Log.print("Lexing Program 1...");
   let first = getTokens(source);
 
   Log.breakLine();
@@ -148,7 +149,11 @@ function lex(source: string): Token {
         token = createToken("$", "EOP", last);
         charNum += 1;
         pgrmCount++;
-        Log.breakLine();
+        if (source.substring(1).replace(/\s/g, "").length > 0) {
+          //If there is more non-whitespace in the source closeIndex
+          Log.breakLine();
+          Log.print("Lexing Program " + pgrmCount + "...");
+        }
         getTokens(source.substring(1), token);
         return token;
       case '"':

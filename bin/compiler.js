@@ -72,12 +72,13 @@ function loadProgram(name) {
 /// <reference path="Helper.ts"/>
 function lex(source) {
     const COL_BEGIN = 0;
-    let pgrmCount = 0;
+    let pgrmCount = 1;
     let lineNum = 1;
     let charNum = COL_BEGIN;
     let numWarns = 0;
     let numErrors = 0;
     //Begin generating tokens from source code
+    Log.print("Lexing Program 1...");
     let first = getTokens(source);
     Log.breakLine();
     Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
@@ -222,7 +223,11 @@ function lex(source) {
                 token = createToken("$", "EOP", last);
                 charNum += 1;
                 pgrmCount++;
-                Log.breakLine();
+                if (source.substring(1).replace(/\s/g, "").length > 0) {
+                    //If there is more non-whitespace in the source closeIndex
+                    Log.breakLine();
+                    Log.print("Lexing Program " + pgrmCount + "...");
+                }
                 getTokens(source.substring(1), token);
                 return token;
             case '"':
