@@ -55,6 +55,7 @@ function init() {
         opt.value = names[i];
         progSel.add(opt);
     }
+    //Add event listeners to Console element
     let consoleElem = document.getElementById("source");
     consoleElem.addEventListener("keydown", function (e) {
         //Reset selected program when edits are made
@@ -424,7 +425,7 @@ class Log {
     }
     static breakLine() {
         if (!Log.isLastLineClear())
-            Log.print("");
+            Log.print("", LogPri.ERROR);
     }
 }
 Log.level = LogPri.VERBOSE;
@@ -451,7 +452,7 @@ function parse(token) {
         }
         catch (e) {
             if (e.name === "Parse_Error") {
-                Log.print(e);
+                Log.print(e, LogPri.ERROR);
                 Log.print("");
                 Log.print(`Parser completed with ${numWarns} warnings and 1 errors.`);
                 return null;

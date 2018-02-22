@@ -24,7 +24,7 @@ function parse(token: Token) {
       CSTs = CSTs.concat(root);
     } catch (e) {
       if (e.name === "Parse_Error") {
-        Log.print(e);
+        Log.print(e, LogPri.ERROR);
         Log.print("");
         Log.print(`Parser completed with ${numWarns} warnings and 1 errors.`)
         return null;

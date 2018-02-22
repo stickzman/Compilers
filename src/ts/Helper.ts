@@ -24,7 +24,7 @@ function init() {
     opt.value = names[i];
     progSel.add(opt);
   }
-
+  //Add event listeners to Console element
   let consoleElem = document.getElementById("source");
   consoleElem.addEventListener("keydown", function (e) {
     //Reset selected program when edits are made

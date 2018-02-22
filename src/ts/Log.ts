@@ -96,7 +96,7 @@ class Log {
   }
 
   public static breakLine() {
-    if (!Log.isLastLineClear()) Log.print("");
+    if (!Log.isLastLineClear()) Log.print("", LogPri.ERROR);
   }
 
 }
