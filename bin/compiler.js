@@ -7,7 +7,7 @@ function compile() {
         return;
     }
     let CSTs = parse(tokenLinkedList);
-    if (CSTs.length === 0) {
+    if (CSTs === null) {
         return;
     }
 }

@@ -7,6 +7,6 @@ function compile() {
   let tokenLinkedList = lex(source);
   if (tokenLinkedList === null) {return;}
   let CSTs = parse(tokenLinkedList);
-  if (CSTs.length === 0) {return;}
-  
+  if (CSTs === null) {return;}
+
 }
