@@ -358,8 +358,8 @@ class Log {
     static print(msg, priority = LogPri.INFO) {
         if (priority >= Log.level) {
             Log.logElem.value += " " + msg + "\n";
-            //Scroll Log to bottom when updating
-            //Log.logElem.scrollTop = Log.logElem.scrollHeight;
+            //Scroll Log to bottom top when updating
+            Log.logElem.scrollTop = 0;
         }
     }
     static clear() {
