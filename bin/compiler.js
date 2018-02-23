@@ -433,6 +433,7 @@ function parse(token) {
     let numWarns = 0;
     let pgrmNum = 0;
     let CSTs = [];
+    let symTable = [];
     while (token !== undefined) {
         pgrmNum++;
         Log.breakLine();
@@ -463,6 +464,12 @@ function parse(token) {
             }
         }
     }
+    Log.breakLine();
+    Log.print("Symbol Table:");
+    for (let i = 0; i < symTable.length; i++) {
+        Log.print(symTable[i].toString());
+    }
+    Log.breakLine();
     Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
     //Return all completed Concrete Syntax Trees
     return CSTs;
@@ -532,7 +539,11 @@ function parse(token) {
     function parseVarDecl(parent) {
         Log.ParseMsg("parseVarDecl()");
         let node = branchNode("VarDecl", parent);
+        let sym = new SymbolEntry();
+        sym.type = token.name;
         parseType(node);
+        sym.name = token.value;
+        symTable.push(sym);
         match(["ID"], node, false);
     }
     function parseType(parent) {
@@ -670,6 +681,15 @@ function parse(token) {
                     ` at line: ${token.line} col: ${token.col}.`);
             }
         }
+    }
+}
+class SymbolEntry {
+    constructor(name, type) {
+        this.name = name;
+        this.type = type;
+    }
+    toString() {
+        return `[name: ${this.name}, type: ${this.type}]`;
     }
 }
 class Token {

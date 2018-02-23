@@ -3,6 +3,7 @@ function parse(token: Token) {
   let numWarns = 0;
   let pgrmNum = 0;
   let CSTs = [];
+  let symTable = [];
 
   while (token !== undefined) {
     pgrmNum++;
@@ -34,6 +35,12 @@ function parse(token: Token) {
       }
     }
   }
+  Log.breakLine();
+  Log.print("Symbol Table:");
+  for (let i = 0; i < symTable.length; i++) {
+    Log.print(symTable[i].toString());
+  }
+  Log.breakLine();
   Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
   //Return all completed Concrete Syntax Trees
   return CSTs;
@@ -109,7 +116,11 @@ function parse(token: Token) {
   function parseVarDecl(parent: TNode) {
     Log.ParseMsg("parseVarDecl()");
     let node = branchNode("VarDecl", parent);
+    let sym = new SymbolEntry();
+    sym.type = token.name;
     parseType(node);
+    sym.name = token.value;
+    symTable.push(sym);
     match(["ID"], node, false);
   }
 
