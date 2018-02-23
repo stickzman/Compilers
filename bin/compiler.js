@@ -433,8 +433,9 @@ function parse(token) {
     let numWarns = 0;
     let pgrmNum = 0;
     let CSTs = [];
-    let symTable = [];
+    let symTable;
     while (token !== undefined) {
+        symTable = [];
         pgrmNum++;
         Log.breakLine();
         Log.print("Parsing Program " + pgrmNum + "...");
@@ -450,6 +451,16 @@ function parse(token) {
             Log.print(root.toString(), LogPri.VERBOSE);
             //Add CST to end of array
             CSTs = CSTs.concat(root);
+            //Print Symbol Table
+            //TODO: Implement this better (scope? values?)
+            //      Actually *return* symbol table
+            if (symTable.length > 0) {
+                Log.breakLine();
+                Log.print("Symbol Table:", LogPri.VERBOSE);
+            }
+            for (let i = 0; i < symTable.length; i++) {
+                Log.print(symTable[i].toString(), LogPri.VERBOSE);
+            }
         }
         catch (e) {
             if (e.name === "Parse_Error") {
@@ -463,11 +474,6 @@ function parse(token) {
                 throw e;
             }
         }
-    }
-    Log.breakLine();
-    Log.print("Symbol Table:");
-    for (let i = 0; i < symTable.length; i++) {
-        Log.print(symTable[i].toString());
     }
     Log.breakLine();
     Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
