@@ -13,7 +13,7 @@ function lex(source: string): Token {
   let first = getTokens(source);
 
   Log.breakLine();
-  Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
+  Log.print(`Lexed ${pgrmNum} programs with ${numWarns} warnings and ${numErrors} errors.`);
 
   if (numErrors === 0) {
     return first; //Return the completed linked list
@@ -147,9 +147,9 @@ function lex(source: string): Token {
       case '$':
         token = createToken("$", "EOP", last);
         charNum += 1;
-        pgrmNum++;
         if (source.substring(1).replace(/\s/g, "").length > 0) {
-          //If there is more non-whitespace in the source closeIndex
+          //If there is more non-whitespace in the source, increment pgrmNum
+          pgrmNum++;
           Log.breakLine();
           Log.print("Lexing Program " + pgrmNum + "...");
         }

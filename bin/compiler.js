@@ -103,7 +103,7 @@ function lex(source) {
     Log.print("Lexing Program 1...");
     let first = getTokens(source);
     Log.breakLine();
-    Log.print(`Lexer completed with ${numWarns} warnings and ${numErrors} errors.`);
+    Log.print(`Lexed ${pgrmNum} programs with ${numWarns} warnings and ${numErrors} errors.`);
     if (numErrors === 0) {
         return first; //Return the completed linked list
     }
@@ -244,9 +244,9 @@ function lex(source) {
             case '$':
                 token = createToken("$", "EOP", last);
                 charNum += 1;
-                pgrmNum++;
                 if (source.substring(1).replace(/\s/g, "").length > 0) {
-                    //If there is more non-whitespace in the source closeIndex
+                    //If there is more non-whitespace in the source, increment pgrmNum
+                    pgrmNum++;
                     Log.breakLine();
                     Log.print("Lexing Program " + pgrmNum + "...");
                 }
@@ -459,23 +459,21 @@ function parse(token) {
             match(["$"], root);
             //Display results
             Log.breakLine();
-            Log.print("CST for Program " + pgrmNum + ":", LogPri.VERBOSE);
-            Log.print(root.toString(), LogPri.VERBOSE);
+            Log.print("CST for Program " + pgrmNum + ":\n" + root.toString(), LogPri.VERBOSE);
             //Add CST to end of array
             CSTs = CSTs.concat(root);
             //Print Symbol Table
             //TODO: Implement this better (scope?)
             if (symTable.length() > 0) {
                 Log.breakLine();
-                Log.print("Symbol Table:", LogPri.VERBOSE);
-                Log.print(symTable.toString(), LogPri.VERBOSE);
+                Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
             }
         }
         catch (e) {
             if (e.name === "Parse_Error") {
                 Log.print(e, LogPri.ERROR);
                 Log.print("");
-                Log.print(`Parser completed with ${numWarns} warnings and 1 errors.`);
+                Log.print(`Parsed ${pgrmNum} programs with ${numWarns} warnings and 1 errors.`);
                 return null;
             }
             else {
@@ -485,7 +483,7 @@ function parse(token) {
         }
     }
     Log.breakLine();
-    Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
+    Log.print(`Parsed ${pgrmNum} programs with ${numWarns} warnings and 1 errors.`);
     //Return all completed Concrete Syntax Trees
     return [CSTs, symbolTables];
     function parseBlock(parent) {
