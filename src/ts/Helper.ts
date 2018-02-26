@@ -3,6 +3,10 @@
 //Level of priority for a log message
 enum LogPri {VERBOSE, INFO, WARNING, ERROR};
 
+interface HashTable {
+  [key: string]: any;
+}
+
 function countLines(str: string): number {
   return str.split(/[\n\r]/).length-1;
 }

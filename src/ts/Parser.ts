@@ -3,10 +3,11 @@ function parse(token: Token) {
   let numWarns = 0;
   let pgrmNum = 0;
   let CSTs = [];
-  let symTable: SymbolEntry[];
+  let symbolTables: SymbolTable[];
 
   while (token !== undefined) {
-    symTable = [];
+    symTable = new SymbolTable();
+    symbolTables.push(symTable);
     pgrmNum++;
     Log.breakLine();
     Log.print("Parsing Program " + pgrmNum + "...");
@@ -28,12 +29,12 @@ function parse(token: Token) {
       //Print Symbol Table
       //TODO: Implement this better (scope? values?)
       //      Actually *return* symbol table
-      if (symTable.length > 0){
+      if (!symTable.isEmpty()){
         Log.breakLine();
         Log.print("Symbol Table:", LogPri.VERBOSE);
-      }
-      for (let i = 0; i < symTable.length; i++) {
-        Log.print(symTable[i].toString(), LogPri.VERBOSE);
+        for (let i = 0; i < symTable.length; i++) {
+          Log.print(symTable[i].toString(), LogPri.VERBOSE);
+        }
       }
     } catch (e) {
       if (e.name === "Parse_Error") {
@@ -50,7 +51,7 @@ function parse(token: Token) {
   Log.breakLine();
   Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
   //Return all completed Concrete Syntax Trees
-  return CSTs;
+  return [CSTs, symbolTables];
 
   function parseBlock(parent: TNode) {
     Log.ParseMsg("parseBlock()");
@@ -123,11 +124,10 @@ function parse(token: Token) {
   function parseVarDecl(parent: TNode) {
     Log.ParseMsg("parseVarDecl()");
     let node = branchNode("VarDecl", parent);
-    let sym = new SymbolEntry();
-    sym.type = token.name;
+    let type = token;
     parseType(node);
-    sym.name = token.value;
-    symTable.push(sym);
+    let name = token;
+    symTable.insert(name, type);
     match(["ID"], node, false);
   }
 
