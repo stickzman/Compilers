@@ -8,7 +8,7 @@ function compile() {
   if (tokenLinkedList === null) {return;}
   let results = parse(tokenLinkedList);
   if (results === null) {return;}
-  let CSTs = results[0];
-  let symbolTables = results[1];
-
+  let CSTs = <TNode[]> results[0];
+  let symbolTables = <SymbolTable[]> results[1];
+  
 }
