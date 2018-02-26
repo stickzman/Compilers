@@ -1,9 +1,10 @@
-function parse(token: Token) {
 
+function parse(token: Token) {
   let numWarns = 0;
   let pgrmNum = 0;
   let CSTs = [];
-  let symbolTables: SymbolTable[];
+  let symbolTables: SymbolTable[] = [];
+  let symTable: SymbolTable;
 
   while (token !== undefined) {
     symTable = new SymbolTable();
@@ -32,9 +33,7 @@ function parse(token: Token) {
       if (!symTable.isEmpty()){
         Log.breakLine();
         Log.print("Symbol Table:", LogPri.VERBOSE);
-        for (let i = 0; i < symTable.length; i++) {
-          Log.print(symTable[i].toString(), LogPri.VERBOSE);
-        }
+        Log.print(symTable.toString(), LogPri.VERBOSE);
       }
     } catch (e) {
       if (e.name === "Parse_Error") {

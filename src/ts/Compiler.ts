@@ -6,9 +6,9 @@ function compile() {
 
   let tokenLinkedList = lex(source);
   if (tokenLinkedList === null) {return;}
-  let results = parse(tokenLinkedList);.
+  let results = parse(tokenLinkedList);
+  if (results === null) {return;}
   let CSTs = results[0];
-  if (CSTs === null) {return;}
   let symbolTables = results[1];
 
 }

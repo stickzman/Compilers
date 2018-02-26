@@ -6,10 +6,12 @@ function compile() {
     if (tokenLinkedList === null) {
         return;
     }
-    let CSTs = parse(tokenLinkedList);
-    if (CSTs === null) {
+    let results = parse(tokenLinkedList);
+    if (results === null) {
         return;
     }
+    let CSTs = results[0];
+    let symbolTables = results[1];
 }
 //All test cases names and source code to be displayed in console panel
 let tests = {
@@ -58,12 +60,16 @@ function init() {
     //Add event listeners to Console element
     let consoleElem = document.getElementById("source");
     consoleElem.addEventListener("keydown", function (e) {
-        //Reset selected program when edits are made
+        if (e.keyCode === 113) {
+            //F2 compiles Program
+            compile();
+        }
         if ([33, 34, 37, 38, 39, 40].indexOf(e.keyCode) === -1) {
+            //Reset selected program when edits are made
             progSel.selectedIndex = 0;
         }
-        //Allow tabs in Console
-        if (e.keyCode == 9) {
+        else if (e.keyCode === 9) {
+            //Allow tabs in Console
             e.preventDefault();
             let elem = this;
             let start = elem.selectionStart;
@@ -433,9 +439,11 @@ function parse(token) {
     let numWarns = 0;
     let pgrmNum = 0;
     let CSTs = [];
+    let symbolTables = [];
     let symTable;
     while (token !== undefined) {
-        symTable = [];
+        symTable = new SymbolTable();
+        symbolTables.push(symTable);
         pgrmNum++;
         Log.breakLine();
         Log.print("Parsing Program " + pgrmNum + "...");
@@ -454,12 +462,10 @@ function parse(token) {
             //Print Symbol Table
             //TODO: Implement this better (scope? values?)
             //      Actually *return* symbol table
-            if (symTable.length > 0) {
+            if (!symTable.isEmpty()) {
                 Log.breakLine();
                 Log.print("Symbol Table:", LogPri.VERBOSE);
-            }
-            for (let i = 0; i < symTable.length; i++) {
-                Log.print(symTable[i].toString(), LogPri.VERBOSE);
+                Log.print(symTable.toString(), LogPri.VERBOSE);
             }
         }
         catch (e) {
@@ -478,7 +484,7 @@ function parse(token) {
     Log.breakLine();
     Log.print(`Parser completed with ${numWarns} warnings and 0 errors.`);
     //Return all completed Concrete Syntax Trees
-    return CSTs;
+    return [CSTs, symbolTables];
     function parseBlock(parent) {
         Log.ParseMsg("parseBlock()");
         let node = branchNode("Block", parent);
@@ -545,11 +551,10 @@ function parse(token) {
     function parseVarDecl(parent) {
         Log.ParseMsg("parseVarDecl()");
         let node = branchNode("VarDecl", parent);
-        let sym = new SymbolEntry();
-        sym.type = token.name;
+        let type = token;
         parseType(node);
-        sym.name = token.value;
-        symTable.push(sym);
+        let name = token;
+        symTable.insert(name, type);
         match(["ID"], node, false);
     }
     function parseType(parent) {
@@ -679,7 +684,7 @@ function parse(token) {
         for (let char of tList) {
             tokenSym = (symbol) ? token.symbol : token.name;
             if (char === tokenSym) {
-                parent.addChild(new TNode(token.symbol));
+                parent.addChild(new TNode(token.symbol, token));
                 nextToken();
             }
             else {
@@ -689,13 +694,29 @@ function parse(token) {
         }
     }
 }
-class SymbolEntry {
-    constructor(name, type) {
-        this.name = name;
-        this.type = type;
+class SymbolTable {
+    constructor() {
+        this.table = {};
+    }
+    insert(nameTok, typeTok) {
+        this.table[nameTok.value] = { name: nameTok, type: typeTok };
+    }
+    lookup(name) {
+        return this.table[name];
     }
     toString() {
-        return `[name: ${this.name}, type: ${this.type}]`;
+        let str = "";
+        let keys = Object.keys(this.table);
+        for (let i = 0; i < keys.length; i++) {
+            str += `[name: ${this.table[keys[i]].name}, type: ${this.table[keys[i]].type}]`;
+        }
+        return str;
+    }
+    isEmpty() {
+        return Object.keys(this.table).length <= 0;
+    }
+    length() {
+        return Object.keys(this.table).length;
     }
 }
 class Token {
@@ -716,8 +737,9 @@ class Token {
     }
 }
 class TNode {
-    constructor(name) {
+    constructor(name, token) {
         this.name = name;
+        this.token = token;
         this.children = [];
         this.parent = null;
     }

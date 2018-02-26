@@ -5,7 +5,7 @@ class SymbolTable {
   constructor() { }
 
   public insert(nameTok: Token, typeTok: Token) {
-    this.table[nameTok.value] = {name.nameTok, type.typeTok};
+    this.table[nameTok.value] = {name:nameTok, type:typeTok};
   }
 
   public lookup(name: string) {
@@ -23,5 +23,9 @@ class SymbolTable {
 
   public isEmpty() {
     return Object.keys(this.table).length <= 0;
+  }
+
+  public length() {
+    return Object.keys(this.table).length;
   }
 }

@@ -31,12 +31,15 @@ function init() {
   //Add event listeners to Console element
   let consoleElem = document.getElementById("source");
   consoleElem.addEventListener("keydown", function (e) {
-    //Reset selected program when edits are made
-    if ([33, 34, 37, 38, 39, 40].indexOf(e.keyCode) === -1) {
-      progSel.selectedIndex = 0;
+    if (e.keyCode === 113) {
+      //F2 compiles Program
+      compile();
     }
-    //Allow tabs in Console
-    if (e.keyCode == 9) {
+    if ([33, 34, 37, 38, 39, 40].indexOf(e.keyCode) === -1) {
+      //Reset selected program when edits are made
+      progSel.selectedIndex = 0;
+    } else if (e.keyCode === 9) {
+      //Allow tabs in Console
       e.preventDefault();
       let elem = <HTMLInputElement>this;
       let start = elem.selectionStart;
