@@ -15,8 +15,12 @@ class SymbolTable {
   public toString(): string {
     let str = "";
     let keys = Object.keys(this.table);
+    let name: string = "";
+    let type: string = "";
     for (let i = 0; i < keys.length; i++) {
-      str += `[name: ${this.table[keys[i]].name.symbol}, type: ${this.table[keys[i]].type}]\n`;
+      name = this.lookup(keys[i]).name.value;
+      type = this.lookup(keys[i]).type;
+      str += `[name: ${name}, type: ${type}]\n`;
     }
     return str;
   }
