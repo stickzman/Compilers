@@ -16,13 +16,9 @@ class SymbolTable {
     let str = "";
     let keys = Object.keys(this.table);
     for (let i = 0; i < keys.length; i++) {
-      str += `[name: ${this.table[keys[i]].name}, type: ${this.table[keys[i]].type}]`;
+      str += `[name: ${this.table[keys[i]].name}, type: ${this.table[keys[i]].type}]\n`;
     }
     return str;
-  }
-
-  public isEmpty() {
-    return Object.keys(this.table).length <= 0;
   }
 
   public length() {

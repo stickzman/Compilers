@@ -2,7 +2,7 @@
 function parse(token: Token) {
   let numWarns = 0;
   let pgrmNum = 0;
-  let CSTs = [];
+  let CSTs: TNode[] = [];
   let symbolTables: SymbolTable[] = [];
   let symTable: SymbolTable;
 
@@ -28,9 +28,8 @@ function parse(token: Token) {
       CSTs = CSTs.concat(root);
 
       //Print Symbol Table
-      //TODO: Implement this better (scope? values?)
-      //      Actually *return* symbol table
-      if (!symTable.isEmpty()){
+      //TODO: Implement this better (scope?)
+      if (symTable.length() > 0) {
         Log.breakLine();
         Log.print("Symbol Table:", LogPri.VERBOSE);
         Log.print(symTable.toString(), LogPri.VERBOSE);

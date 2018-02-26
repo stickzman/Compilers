@@ -31,13 +31,13 @@ function init() {
   //Add event listeners to Console element
   let consoleElem = document.getElementById("source");
   consoleElem.addEventListener("keydown", function (e) {
-    if (e.keyCode === 113) {
-      //F2 compiles Program
-      compile();
-    }
     if ([33, 34, 37, 38, 39, 40].indexOf(e.keyCode) === -1) {
       //Reset selected program when edits are made
       progSel.selectedIndex = 0;
+    }
+    if (e.keyCode === 113) {
+      //F2 compiles Program
+      compile();
     } else if (e.keyCode === 9) {
       //Allow tabs in Console
       e.preventDefault();

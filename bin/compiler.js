@@ -60,13 +60,13 @@ function init() {
     //Add event listeners to Console element
     let consoleElem = document.getElementById("source");
     consoleElem.addEventListener("keydown", function (e) {
-        if (e.keyCode === 113) {
-            //F2 compiles Program
-            compile();
-        }
         if ([33, 34, 37, 38, 39, 40].indexOf(e.keyCode) === -1) {
             //Reset selected program when edits are made
             progSel.selectedIndex = 0;
+        }
+        if (e.keyCode === 113) {
+            //F2 compiles Program
+            compile();
         }
         else if (e.keyCode === 9) {
             //Allow tabs in Console
@@ -364,8 +364,8 @@ class Log {
     static print(msg, priority = LogPri.INFO) {
         if (priority >= Log.level) {
             Log.logElem.value += " " + msg + "\n";
-            //Scroll Log to bottom top when updating
-            Log.logElem.scrollTop = 0;
+            //Scroll Log to bottom bottom when updating
+            Log.logElem.scrollTop = Log.logElem.scrollHeight;
         }
     }
     static clear() {
@@ -460,9 +460,8 @@ function parse(token) {
             //Add CST to end of array
             CSTs = CSTs.concat(root);
             //Print Symbol Table
-            //TODO: Implement this better (scope? values?)
-            //      Actually *return* symbol table
-            if (!symTable.isEmpty()) {
+            //TODO: Implement this better (scope?)
+            if (symTable.length() > 0) {
                 Log.breakLine();
                 Log.print("Symbol Table:", LogPri.VERBOSE);
                 Log.print(symTable.toString(), LogPri.VERBOSE);
@@ -708,12 +707,9 @@ class SymbolTable {
         let str = "";
         let keys = Object.keys(this.table);
         for (let i = 0; i < keys.length; i++) {
-            str += `[name: ${this.table[keys[i]].name}, type: ${this.table[keys[i]].type}]`;
+            str += `[name: ${this.table[keys[i]].name}, type: ${this.table[keys[i]].type}]\n`;
         }
         return str;
-    }
-    isEmpty() {
-        return Object.keys(this.table).length <= 0;
     }
     length() {
         return Object.keys(this.table).length;
