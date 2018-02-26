@@ -268,7 +268,7 @@ function parse(token: Token) {
     for (let char of tList) {
       tokenSym = (symbol) ? token.symbol : token.name;
       if (char === tokenSym) {
-        parent.addChild(new TNode(token.symbol));
+        parent.addChild(new TNode(token.symbol, token));
         nextToken();
       } else {
         throw error(`Expected '${char}' found '${tokenSym}'` +

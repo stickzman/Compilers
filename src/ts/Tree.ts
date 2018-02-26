@@ -2,7 +2,7 @@ class TNode {
   public children: TNode[] = [];
   public parent: TNode = null;
 
-  constructor(public name: string) {  }
+  constructor(public name: string, public token?: Token) {  }
 
   public addChild(node: TNode) {
     this.children.push(node);
