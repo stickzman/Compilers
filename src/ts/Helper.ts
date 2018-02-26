@@ -28,6 +28,14 @@ function init() {
     opt.value = names[i];
     progSel.add(opt);
   }
+  //Add event listeners to whole page
+  document.addEventListener("keydown", function (e) {
+    //F2 compiles Program
+    if (e.keyCode === 113) {
+      e.preventDefault();
+      compile();
+    }
+  });
   //Add event listeners to Console element
   let consoleElem = document.getElementById("source");
   consoleElem.addEventListener("keydown", function (e) {
@@ -35,10 +43,7 @@ function init() {
       //Reset selected program when edits are made
       progSel.selectedIndex = 0;
     }
-    if (e.keyCode === 113) {
-      //F2 compiles Program
-      compile();
-    } else if (e.keyCode === 9) {
+    if (e.keyCode === 9) {
       //Allow tabs in Console
       e.preventDefault();
       let elem = <HTMLInputElement>this;
@@ -49,7 +54,6 @@ function init() {
       elem.selectionEnd = start+1;
     }
   });
-
 }
 
 function loadProgram(name: string) {
