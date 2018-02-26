@@ -7,7 +7,7 @@ class Token {
     if (this.value === undefined) {
       return this.name;
     } else {
-      return this.name, this.value;
+      return this.name + ", " + this.value;
     }
   }
 }
