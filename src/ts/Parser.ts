@@ -27,7 +27,6 @@ function parse(token: Token) {
       CSTs = CSTs.concat(root);
 
       //Print Symbol Table
-      //TODO: Implement this better (scope?)
       if (symTable.length() > 0) {
         Log.breakLine();
         Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
@@ -45,7 +44,7 @@ function parse(token: Token) {
     }
   }
   Log.breakLine();
-  Log.print(`Parsed ${pgrmNum} programs with ${numWarns} warnings and 1 errors.`);
+  Log.print(`Parsed ${pgrmNum} programs with ${numWarns} warnings and 0 errors.`);
   //Return all completed Concrete Syntax Trees
   return [CSTs, symbolTables];
 

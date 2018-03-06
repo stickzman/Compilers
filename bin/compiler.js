@@ -463,7 +463,6 @@ function parse(token) {
             //Add CST to end of array
             CSTs = CSTs.concat(root);
             //Print Symbol Table
-            //TODO: Implement this better (scope?)
             if (symTable.length() > 0) {
                 Log.breakLine();
                 Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
@@ -483,7 +482,7 @@ function parse(token) {
         }
     }
     Log.breakLine();
-    Log.print(`Parsed ${pgrmNum} programs with ${numWarns} warnings and 1 errors.`);
+    Log.print(`Parsed ${pgrmNum} programs with ${numWarns} warnings and 0 errors.`);
     //Return all completed Concrete Syntax Trees
     return [CSTs, symbolTables];
     function parseBlock(parent) {
