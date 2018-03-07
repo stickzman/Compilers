@@ -129,7 +129,7 @@ function lex(source, lineNum, charNum, pgrmNum) {
     //Begin generating tokens from source code
     let first = getTokens(source);
     Log.breakLine();
-    Log.print(`Completed lexing Program ${pgrmNum} with ${numWarns} warnings and ${numErrors} errors.`);
+    Log.print(`Lexed Program ${pgrmNum} with ${numWarns} warnings and ${numErrors} errors.`);
     if (numErrors === 0) {
         return [first, lineNum, charNum]; //Return the completed linked list
     }

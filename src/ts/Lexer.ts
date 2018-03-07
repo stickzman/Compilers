@@ -9,7 +9,7 @@ function lex(source: string, lineNum: number, charNum: number, pgrmNum: number):
   let first = getTokens(source);
 
   Log.breakLine();
-  Log.print(`Completed lexing Program ${pgrmNum} with ${numWarns} warnings and ${numErrors} errors.`);
+  Log.print(`Lexed Program ${pgrmNum} with ${numWarns} warnings and ${numErrors} errors.`);
 
   if (numErrors === 0) {
     return [first, lineNum, charNum]; //Return the completed linked list
