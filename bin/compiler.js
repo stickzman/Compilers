@@ -2,16 +2,46 @@ function compile() {
     //Get source code
     let source = document.getElementById("source").value;
     Log.clear();
-    let tokenLinkedList = lex(source);
-    if (tokenLinkedList === null) {
-        return;
+    //Split source code of programs
+    let pgrms = source.split("$");
+    for (let i = 0; i < pgrms.length; i++) {
+        if (i == pgrms.length - 1) {
+            if (/^\s*$/.test(pgrms[i])) {
+                //If the last program is whitespace, delete it
+                pgrms.pop();
+            }
+        }
+        else if (/.*\/\*((?!\*\/).)*$/.test(pgrms[i]) && /^(.(?!\/\*))*\*\//.test(pgrms[i + 1])) {
+            //If the last and next programs end and begin with unclosed comment blocks,
+            //the '$' was inside a comment and the programs should be put back together
+            pgrms[i] += "$"; //Add the missing'$'
+            pgrms[i] = pgrms[i].concat(pgrms[i + 1]);
+            pgrms.splice(i + 1, 1);
+        }
+        else {
+            //Add '$' back at the end of the program
+            pgrms[i] += "$";
+        }
     }
-    let results = parse(tokenLinkedList);
-    if (results === null) {
-        return;
+    let lineCount = 1;
+    let colCount = 0;
+    for (let i = 0; i < pgrms.length; i++) {
+        Log.breakLine();
+        Log.print("Lexing Program " + (i + 1) + "...");
+        let results = lex(pgrms[i], lineCount, colCount, i + 1);
+        let tokenLinkedList = results[0];
+        lineCount = results[1];
+        colCount = results[2];
+        if (tokenLinkedList === null) {
+            continue;
+        }
+        Log.breakLine();
+        Log.print("Parsing Program " + (i + 1) + "...");
+        let CST = parse(tokenLinkedList, i + 1);
+        if (CST === null) {
+            continue;
+        }
     }
-    let CSTs = results[0];
-    let symbolTables = results[1];
 }
 //All test cases names and source code to be displayed in console panel
 let tests = {
@@ -92,23 +122,19 @@ function loadProgram(name) {
     source.value = tests[name];
 }
 /// <reference path="Helper.ts"/>
-function lex(source) {
+function lex(source, lineNum, charNum, pgrmNum) {
     const COL_BEGIN = 0;
-    let pgrmNum = 1;
-    let lineNum = 1;
-    let charNum = COL_BEGIN;
     let numWarns = 0;
     let numErrors = 0;
     //Begin generating tokens from source code
-    Log.print("Lexing Program 1...");
     let first = getTokens(source);
     Log.breakLine();
-    Log.print(`Lexed ${pgrmNum} programs with ${numWarns} warnings and ${numErrors} errors.`);
+    Log.print(`Completed lexing Program ${pgrmNum} with ${numWarns} warnings and ${numErrors} errors.`);
     if (numErrors === 0) {
-        return first; //Return the completed linked list
+        return [first, lineNum, charNum]; //Return the completed linked list
     }
     else {
-        return null; //Return nothing if any errors occurred
+        return [null, lineNum, charNum]; //Return nothing if any errors occurred
     }
     function getTokens(source, last) {
         if (source.length <= 0) {
@@ -244,12 +270,6 @@ function lex(source) {
             case '$':
                 token = createToken("$", "EOP", last);
                 charNum += 1;
-                if (source.substring(1).replace(/\s/g, "").length > 0) {
-                    //If there is more non-whitespace in the source, increment pgrmNum
-                    pgrmNum++;
-                    Log.breakLine();
-                    Log.print("Lexing Program " + pgrmNum + "...");
-                }
                 getTokens(source.substring(1), token);
                 return token;
             case '"':
@@ -439,52 +459,40 @@ class Log {
     }
 }
 Log.level = LogPri.VERBOSE;
-function parse(token) {
+function parse(token, pgrmNum) {
     let numWarns = 0;
-    let pgrmNum = 0;
-    let CSTs = [];
-    let symbolTables = [];
-    let symTable;
-    while (token !== undefined) {
-        symTable = new SymbolTable();
-        symbolTables.push(symTable);
-        pgrmNum++;
+    let symTable = new SymbolTable();
+    //Initial parsing of Program
+    try {
+        Log.ParseMsg("parse()");
+        let root = new TNode("Program");
+        parseBlock(root);
+        match(["$"], root);
+        //Display Concrete Syntax Tree
         Log.breakLine();
-        Log.print("Parsing Program " + pgrmNum + "...");
-        //Initial parsing of Program
-        try {
-            Log.ParseMsg("parse()");
-            let root = new TNode("Program");
-            parseBlock(root);
-            match(["$"], root);
-            //Display results
+        Log.print("CST for Program " + pgrmNum + ":\n" + root.toString(), LogPri.VERBOSE);
+        //Print Symbol Table
+        if (symTable.length() > 0) {
             Log.breakLine();
-            Log.print("CST for Program " + pgrmNum + ":\n" + root.toString(), LogPri.VERBOSE);
-            //Add CST to end of array
-            CSTs = CSTs.concat(root);
-            //Print Symbol Table
-            if (symTable.length() > 0) {
-                Log.breakLine();
-                Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
-            }
+            Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
         }
-        catch (e) {
-            if (e.name === "Parse_Error") {
-                Log.print(e, LogPri.ERROR);
-                Log.print("");
-                Log.print(`Parsed ${pgrmNum} programs with ${numWarns} warnings and 1 errors.`);
-                return null;
-            }
-            else {
-                //If the error is not created by my parser, continue to throw it
-                throw e;
-            }
+        Log.breakLine();
+        Log.print(`Parsed Program ${pgrmNum} with ${numWarns} warnings and 0 errors.`);
+        //Return completed Concrete Syntax Tree
+        return root;
+    }
+    catch (e) {
+        if (e.name === "Parse_Error") {
+            Log.print(e, LogPri.ERROR);
+            Log.print("");
+            Log.print(`Parsed Program ${pgrmNum} with ${numWarns} warnings and 1 errors.`);
+            return null;
+        }
+        else {
+            //If the error is not created by my parser, continue to throw it
+            throw e;
         }
     }
-    Log.breakLine();
-    Log.print(`Parsed ${pgrmNum} programs with ${numWarns} warnings and 0 errors.`);
-    //Return all completed Concrete Syntax Trees
-    return [CSTs, symbolTables];
     function parseBlock(parent) {
         Log.ParseMsg("parseBlock()");
         let node = branchNode("Block", parent);

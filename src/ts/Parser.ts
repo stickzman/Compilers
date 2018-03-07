@@ -1,52 +1,39 @@
-
-function parse(token: Token) {
+function parse(token: Token, pgrmNum: number): TNode {
   let numWarns: number = 0;
-  let pgrmNum: number = 0;
-  let CSTs: TNode[] = [];
-  let symbolTables: SymbolTable[] = [];
-  let symTable: SymbolTable;
+  let symTable: SymbolTable = new SymbolTable();
 
-  while (token !== undefined) {
-    symTable = new SymbolTable();
-    symbolTables.push(symTable);
-    pgrmNum++;
+  //Initial parsing of Program
+  try {
+    Log.ParseMsg("parse()");
+    let root = new TNode("Program");
+    parseBlock(root);
+    match(["$"], root);
+
+    //Display Concrete Syntax Tree
     Log.breakLine();
-    Log.print("Parsing Program " + pgrmNum + "...");
-    //Initial parsing of Program
-    try {
-      Log.ParseMsg("parse()");
-      let root = new TNode("Program");
-      parseBlock(root);
-      match(["$"], root);
+    Log.print("CST for Program " + pgrmNum + ":\n" + root.toString(), LogPri.VERBOSE);
 
-      //Display results
+    //Print Symbol Table
+    if (symTable.length() > 0) {
       Log.breakLine();
-      Log.print("CST for Program " + pgrmNum + ":\n" + root.toString(), LogPri.VERBOSE);
+      Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
+    }
 
-      //Add CST to end of array
-      CSTs = CSTs.concat(root);
-
-      //Print Symbol Table
-      if (symTable.length() > 0) {
-        Log.breakLine();
-        Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
-      }
-    } catch (e) {
-      if (e.name === "Parse_Error") {
-        Log.print(e, LogPri.ERROR);
-        Log.print("");
-        Log.print(`Parsed ${pgrmNum} programs with ${numWarns} warnings and 1 errors.`);
-        return null;
-      } else {
-        //If the error is not created by my parser, continue to throw it
-        throw e;
-      }
+    Log.breakLine();
+    Log.print(`Parsed Program ${pgrmNum} with ${numWarns} warnings and 0 errors.`);
+    //Return completed Concrete Syntax Tree
+    return root;
+  } catch (e) {
+    if (e.name === "Parse_Error") {
+      Log.print(e, LogPri.ERROR);
+      Log.print("");
+      Log.print(`Parsed Program ${pgrmNum} with ${numWarns} warnings and 1 errors.`);
+      return null;
+    } else {
+      //If the error is not created by my parser, continue to throw it
+      throw e;
     }
   }
-  Log.breakLine();
-  Log.print(`Parsed ${pgrmNum} programs with ${numWarns} warnings and 0 errors.`);
-  //Return all completed Concrete Syntax Trees
-  return [CSTs, symbolTables];
 
   function parseBlock(parent: TNode) {
     Log.ParseMsg("parseBlock()");
