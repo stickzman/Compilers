@@ -1,24 +1,20 @@
 /// <reference path="Helper.ts"/>
-function lex(source: string): Token {
+function lex(source: string, lineNum: number, charNum: number, pgrmNum: number): [Token, number, number] {
   const COL_BEGIN = 0;
 
-  let pgrmNum: number = 1;
-  let lineNum: number = 1;
-  let charNum: number = COL_BEGIN;
   let numWarns: number = 0;
   let numErrors: number = 0;
 
   //Begin generating tokens from source code
-  Log.print("Lexing Program 1...");
   let first = getTokens(source);
 
   Log.breakLine();
-  Log.print(`Lexed ${pgrmNum} programs with ${numWarns} warnings and ${numErrors} errors.`);
+  Log.print(`Lexed Program ${pgrmNum} with ${numWarns} warnings and ${numErrors} errors.`);
 
   if (numErrors === 0) {
-    return first; //Return the completed linked list
+    return [first, lineNum, charNum]; //Return the completed linked list
   } else {
-    return null; //Return nothing if any errors occurred
+    return [null, lineNum, charNum]; //Return nothing if any errors occurred
   }
 
 
@@ -147,12 +143,6 @@ function lex(source: string): Token {
       case '$':
         token = createToken("$", "EOP", last);
         charNum += 1;
-        if (source.substring(1).replace(/\s/g, "").length > 0) {
-          //If there is more non-whitespace in the source, increment pgrmNum
-          pgrmNum++;
-          Log.breakLine();
-          Log.print("Lexing Program " + pgrmNum + "...");
-        }
         getTokens(source.substring(1), token);
         return token;
       case '"':
