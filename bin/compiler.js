@@ -505,7 +505,15 @@ function parse(token, pgrmNum) {
         let node = branchNode("StatementList", parent);
         let possibleTerminals = ["PRINT", "ID", "INT", "STRING", "BOOLEAN", "WHILE",
             "IF", "LBRACE"];
-        if (possibleTerminals.indexOf(token.name) !== -1) {
+        if (possibleTerminals.indexOf(token.name) === -1) {
+            if (token.symbol !== "}") {
+                //StatementList does not contain valid statement and is not empty
+                throw error(`Error found at line: ${token.line} col: ${token.col}. ` +
+                    `Cannot start a Statement with '${token.symbol}'.`);
+            }
+        }
+        else {
+            //Lookahead found a valid token
             parseStatement(node);
             parseStatementList(node);
         }
