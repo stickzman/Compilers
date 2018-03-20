@@ -180,7 +180,7 @@ function parse(token: Token, pgrmNum: number): TNode {
         match(["ID"], idNode, false);
         return;
       default:
-        throw error(`Unexpected token '${token.symbol}' found at line:${token.line} col:${token.col}`);
+        throw error(`Expected Expr, found '${token.symbol}' at line:${token.line} col:${token.col}`);
     }
   }
 
@@ -208,7 +208,7 @@ function parse(token: Token, pgrmNum: number): TNode {
         match(["false"], node);
         return;
       default:
-        throw error(`Unexpected token '${token.symbol}' found at line:${token.line} col:${token.col}`);
+        throw error(`Expected BooleanExpr, found '${token.symbol}' at line:${token.line} col:${token.col}`);
     }
   }
 
@@ -220,7 +220,7 @@ function parse(token: Token, pgrmNum: number): TNode {
     } else if (token.symbol === "!=") {
       match(["!="], node);
     } else {
-      throw error(`Expected BoolOperation, found ${token.name} at line:${token.line} col:${token.col}`);
+      throw error(`Expected BoolOperation, found '${token.symbol}' at line:${token.line} col:${token.col}`);
     }
   }
 
@@ -255,10 +255,10 @@ function parse(token: Token, pgrmNum: number): TNode {
   //Matches list of tokens by characters
   //formatted as an array of strings.
   //Prints error if match not found.
-  function match(tList: string[], parent: TNode, symbol: boolean = true) {
+  function match(tList: string[], parent: TNode, isSymbol: boolean = true) {
     let tokenSym;
     for (let char of tList) {
-      tokenSym = (symbol) ? token.symbol : token.name;
+      tokenSym = (isSymbol) ? token.symbol : token.name;
       if (char === tokenSym) {
         parent.addChild(new TNode(token.symbol, token));
         nextToken();
