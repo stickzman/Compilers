@@ -225,7 +225,7 @@ function lex(source: string, lineNum: number, charNum: number, pgrmNum: number):
         return getTokens(source.substring(1), last);
       default:
         numErrors++;
-        Log.LexMsg("Unidentified character '" + source.charAt(0) + "'",
+        Log.LexMsg("Undefined character '" + source.charAt(0) + "'",
           lineNum, charNum, LogPri.ERROR);
         return null;
     }

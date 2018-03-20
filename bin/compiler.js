@@ -353,7 +353,7 @@ function lex(source, lineNum, charNum, pgrmNum) {
                 return getTokens(source.substring(1), last);
             default:
                 numErrors++;
-                Log.LexMsg("Unidentified character '" + source.charAt(0) + "'", lineNum, charNum, LogPri.ERROR);
+                Log.LexMsg("Undefined character '" + source.charAt(0) + "'", lineNum, charNum, LogPri.ERROR);
                 return null;
         }
     }
@@ -509,7 +509,7 @@ function parse(token, pgrmNum) {
             if (token.symbol !== "}") {
                 //StatementList does not contain valid statement and is not empty
                 throw error(`Error found at line: ${token.line} col: ${token.col}. ` +
-                    `Cannot start a Statement with '${token.symbol}'.`);
+                    `Cannot start a Statement with [${token.name}].`);
             }
         }
         else {

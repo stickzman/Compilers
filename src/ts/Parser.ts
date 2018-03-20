@@ -52,7 +52,7 @@ function parse(token: Token, pgrmNum: number): TNode {
       if (token.symbol !== "}") {
         //StatementList does not contain valid statement and is not empty
         throw error(`Error found at line: ${token.line} col: ${token.col}. ` +
-                    `Cannot start a Statement with '${token.symbol}'.`);
+                    `Cannot start a Statement with [${token.name}].`);
       }
     } else {
       //Lookahead found a valid token
