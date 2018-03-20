@@ -552,7 +552,8 @@ function parse(token, pgrmNum) {
     function parseAssignStatement(parent) {
         Log.ParseMsg("parseAssignStatement()");
         let node = branchNode("AssignStatement", parent);
-        match(["ID"], node, false);
+        let idNode = branchNode("ID", node);
+        match(["ID"], idNode, false);
         match(["="], node);
         parseExpr(node);
     }
@@ -563,7 +564,8 @@ function parse(token, pgrmNum) {
         parseType(node);
         let name = token;
         symTable.insert(name, type);
-        match(["ID"], node, false);
+        let idNode = branchNode("ID", node);
+        match(["ID"], idNode, false);
     }
     function parseType(parent) {
         Log.ParseMsg("parseType()");
@@ -616,7 +618,8 @@ function parse(token, pgrmNum) {
                 parseBooleanExpr(node);
                 return;
             case "ID":
-                match(["ID"], node, false);
+                let idNode = branchNode("ID", node);
+                match(["ID"], idNode, false);
                 return;
             default:
                 throw error(`Unexpected token '${token.symbol}' found at line:${token.line} col:${token.col}`);
