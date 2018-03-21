@@ -1,8 +1,8 @@
-class TNode {
+class BaseNode {
   public children: TNode[] = [];
   public parent: TNode = null;
 
-  constructor(public name: string, public token?: Token) {  }
+  constructor(public name: string) {  }
 
   public addChild(node: TNode) {
     this.children.push(node);
@@ -62,4 +62,33 @@ function branchNode(name: string, parent: TNode) {
   let node = new TNode(name);
   parent.addChild(node);
   return node;
+}
+
+//Token Tree
+class TNode extends BaseNode {
+  constructor(name: string, public token?: Token) {
+    super(name);
+  }
+}
+
+//Symbol Tree
+class SNode extends BaseNode {
+  public sTable: SymbolTable;
+
+  constructor() {
+    super(null);
+    this.sTable = new SymbolTable();
+  }
+
+  public insert(nameTok: Token, typeTok: Token) {
+    this.sTable.insert(nameTok, typeTok);
+  }
+
+  public lookup(name: string) {
+    return this.sTable.lookup(name);
+  }
+
+  public length() {
+    return this.sTable.length;
+  }
 }

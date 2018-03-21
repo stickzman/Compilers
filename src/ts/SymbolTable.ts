@@ -5,7 +5,8 @@ class SymbolTable {
   constructor() { }
 
   public insert(nameTok: Token, typeTok: Token) {
-    this.table[nameTok.value] = {name:nameTok, type:typeTok};
+    this.table[nameTok.value] = {name:nameTok, type:typeTok,
+                                  initialized:false, used:false};
   }
 
   public lookup(name: string) {

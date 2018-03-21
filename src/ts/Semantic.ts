@@ -1,5 +1,6 @@
 function analyze(token: Token, pgrmNum: number): TNode {
   let numWarns: number = 0;
+  
 
   //Initial parsing of Program
   try {

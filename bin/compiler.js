@@ -903,7 +903,8 @@ class SymbolTable {
         this.table = {};
     }
     insert(nameTok, typeTok) {
-        this.table[nameTok.value] = { name: nameTok, type: typeTok };
+        this.table[nameTok.value] = { name: nameTok, type: typeTok,
+            initialized: false, used: false };
     }
     lookup(name) {
         return this.table[name];
@@ -941,10 +942,9 @@ class Token {
         }
     }
 }
-class TNode {
-    constructor(name, token) {
+class BaseNode {
+    constructor(name) {
         this.name = name;
-        this.token = token;
         this.children = [];
         this.parent = null;
     }
@@ -998,5 +998,28 @@ function branchNode(name, parent) {
     let node = new TNode(name);
     parent.addChild(node);
     return node;
+}
+//Token Tree
+class TNode extends BaseNode {
+    constructor(name, token) {
+        super(name);
+        this.token = token;
+    }
+}
+//Symbol Tree
+class SNode extends BaseNode {
+    constructor() {
+        super(null);
+        this.sTable = new SymbolTable();
+    }
+    insert(nameTok, typeTok) {
+        this.sTable.insert(nameTok, typeTok);
+    }
+    lookup(name) {
+        return this.sTable.lookup(name);
+    }
+    length() {
+        return this.sTable.length;
+    }
 }
 //# sourceMappingURL=compiler.js.map
