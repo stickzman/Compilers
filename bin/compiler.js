@@ -184,12 +184,12 @@ function lex(source, lineNum, charNum, pgrmNum) {
             getTokens(source.substring(7), token);
         }
         else if (/^false/.test(source)) {
-            token = createToken("false", "FALSE", last);
+            token = createToken("false", "BOOLVAL", last);
             charNum += 5;
             getTokens(source.substring(5), token);
         }
         else if (/^true/.test(source)) {
-            token = createToken("true", "TRUE", last);
+            token = createToken("true", "BOOLVAL", last);
             charNum += 4;
             getTokens(source.substring(4), token);
         }
@@ -625,10 +625,7 @@ function parse(token, pgrmNum) {
             case "LPAREN":
                 parseBooleanExpr(node);
                 return;
-            case "TRUE":
-                parseBooleanExpr(node);
-                return;
-            case "FALSE":
+            case "BOOLVAL":
                 parseBooleanExpr(node);
                 return;
             case "ID":
@@ -647,18 +644,18 @@ function parse(token, pgrmNum) {
     function parseBooleanExpr(parent) {
         Log.ParseMsg("parseBooleanExpr()");
         let node = branchNode("BooleanExpr", parent);
-        switch (token.name) {
-            case "LPAREN":
+        switch (token.symbol) {
+            case "(":
                 match(["("], node);
                 parseExpr(node);
                 parseBoolOp(node);
                 parseExpr(node);
                 match([")"], node);
                 return;
-            case "TRUE":
+            case "true":
                 match(["true"], node);
                 return;
-            case "FALSE":
+            case "false":
                 match(["false"], node);
                 return;
             default:
@@ -809,18 +806,16 @@ function analyze(token, pgrmNum) {
                     token = token.next;
                 }
                 break;
-            case "QUOTE": {
-                let node = branchNode("STRING", parent);
+            case "QUOTE":
                 discard(['"']);
-                node.addChild(new TNode(token.symbol, token)); //CHARLIST
+                parent.addChild(new TNode(token.symbol, token)); //CHARLIST
                 token = token.next;
                 discard(['"']);
                 break;
-            }
             case "LPAREN":
                 analyzeBoolExpr(parent);
                 break;
-            case "BOOLEAN":
+            case "BOOLVAL":
                 analyzeBoolExpr(parent);
                 break;
             case "ID":

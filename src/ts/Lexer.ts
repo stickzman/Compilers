@@ -57,11 +57,11 @@ function lex(source: string, lineNum: number, charNum: number, pgrmNum: number):
       charNum += 7;
       getTokens(source.substring(7), token);
     } else if (/^false/.test(source)) {
-      token = createToken("false", "FALSE", last);
+      token = createToken("false", "BOOLVAL", last);
       charNum += 5;
       getTokens(source.substring(5), token);
     } else if (/^true/.test(source)) {
-      token = createToken("true", "TRUE", last);
+      token = createToken("true", "BOOLVAL", last);
       charNum += 4;
       getTokens(source.substring(4), token);
     } else if (/^==/.test(source)) {

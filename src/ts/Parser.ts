@@ -169,10 +169,7 @@ function parse(token: Token, pgrmNum: number): TNode {
       case "LPAREN":
         parseBooleanExpr(node);
         return;
-      case "TRUE":
-        parseBooleanExpr(node);
-        return;
-      case "FALSE":
+      case "BOOLVAL":
         parseBooleanExpr(node);
         return;
       case "ID":
@@ -193,18 +190,18 @@ function parse(token: Token, pgrmNum: number): TNode {
   function parseBooleanExpr(parent: TNode) {
     Log.ParseMsg("parseBooleanExpr()");
     let node = branchNode("BooleanExpr", parent);
-    switch (token.name) {
-      case "LPAREN":
+    switch (token.symbol) {
+      case "(":
         match(["("], node);
         parseExpr(node);
         parseBoolOp(node);
         parseExpr(node);
         match([")"], node);
         return;
-      case "TRUE":
+      case "true":
         match(["true"], node);
         return;
-      case "FALSE":
+      case "false":
         match(["false"], node);
         return;
       default:

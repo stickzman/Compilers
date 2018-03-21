@@ -99,18 +99,16 @@ function analyze(token: Token, pgrmNum: number): TNode {
           token = token.next;
         }
         break;
-      case "QUOTE":{
-        let node = branchNode("STRING", parent);
+      case "QUOTE":
         discard(['"']);
-        node.addChild(new TNode(token.symbol, token)); //CHARLIST
+        parent.addChild(new TNode(token.symbol, token)); //CHARLIST
         token = token.next;
         discard(['"']);
         break;
-      }
       case "LPAREN":
         analyzeBoolExpr(parent);
         break;
-      case "BOOLEAN":
+      case "BOOLVAL":
         analyzeBoolExpr(parent);
         break;
       case "ID":
