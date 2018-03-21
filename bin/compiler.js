@@ -716,7 +716,8 @@ function analyze(token, pgrmNum) {
     //Initial parsing of Program
     try {
         let root = new TNode("Program");
-        analyzeBlock(root);
+        let sRoot = new SymbolTable(); //Placholder root SymbolTable
+        analyzeBlock(root, sRoot);
         //Remove the placeholder "Program" node and make the root the first block
         root = root.children[0];
         Log.breakLine();
@@ -739,37 +740,38 @@ function analyze(token, pgrmNum) {
             throw e;
         }
     }
-    function analyzeBlock(parent) {
+    function analyzeBlock(parent, scope) {
         let node = branchNode("BLOCK", parent);
+        let sTable = new SymbolTable(scope);
         discard(["{"]);
-        analyzeStatements(node);
+        analyzeStatements(node, sTable);
         discard(["}"]);
     }
-    function analyzeStatements(parent) {
+    function analyzeStatements(parent, scope) {
         switch (token.name) {
             case "PRINT":
-                analyzePrint(parent);
+                analyzePrint(parent, scope);
                 break;
             case "ID":
-                analyzeAssign(parent);
+                analyzeAssign(parent, scope);
                 break;
             case "INT":
-                analyzeVarDecl(parent);
+                analyzeVarDecl(parent, scope);
                 break;
             case "STRING":
-                analyzeVarDecl(parent);
+                analyzeVarDecl(parent, scope);
                 break;
             case "BOOLEAN":
-                analyzeVarDecl(parent);
+                analyzeVarDecl(parent, scope);
                 break;
             case "WHILE":
-                analyzeWhileStatement(parent);
+                analyzeWhileStatement(parent, scope);
                 break;
             case "IF":
-                analyzeIfStatement(parent);
+                analyzeIfStatement(parent, scope);
                 break;
             case "LBRACE":
-                analyzeBlock(parent);
+                analyzeBlock(parent, scope);
                 break;
             case "RBRACE":
                 //Empty StatementList
@@ -779,15 +781,15 @@ function analyze(token, pgrmNum) {
                 throw error(`Invalid token ${token.name} found at ${token.line}:${token.col}`);
         }
         //Look at the next statement in (possibly empty) list
-        analyzeStatements(parent);
+        analyzeStatements(parent, scope);
     }
-    function analyzePrint(parent) {
+    function analyzePrint(parent, scope) {
         let node = branchNode("PRINT", parent);
         discard(["print", "("]);
-        analyzeExpr(node);
+        analyzeExpr(node, scope);
         discard([")"]);
     }
-    function analyzeExpr(parent) {
+    function analyzeExpr(parent, scope) {
         switch (token.name) {
             case "DIGIT":
                 if (token.next.symbol === "+") {
@@ -798,7 +800,7 @@ function analyze(token, pgrmNum) {
                     node.addChild(new TNode(token.symbol, token));
                     //2nd DIGIT/rest of EXPR
                     token = token.next.next;
-                    analyzeExpr(node);
+                    analyzeExpr(node, scope);
                 }
                 else {
                     //Just a DIGIT
@@ -813,10 +815,10 @@ function analyze(token, pgrmNum) {
                 discard(['"']);
                 break;
             case "LPAREN":
-                analyzeBoolExpr(parent);
+                analyzeBoolExpr(parent, scope);
                 break;
             case "BOOLVAL":
-                analyzeBoolExpr(parent);
+                analyzeBoolExpr(parent, scope);
                 break;
             case "ID":
                 parent.addChild(new TNode(token.symbol, token));
@@ -828,15 +830,15 @@ function analyze(token, pgrmNum) {
                     `at ${token.line}:${token.col}`);
         }
     }
-    function analyzeBoolExpr(parent) {
+    function analyzeBoolExpr(parent, scope) {
         if (token.symbol === "(") {
             //BooleanExpr
             let node = branchNode("BOOL_EXPR", parent);
             discard(["("]);
-            analyzeExpr(node);
+            analyzeExpr(node, scope);
             node.addChild(new TNode(token.symbol, token)); //BoolOp (== or !=)
             token = token.next;
-            analyzeExpr(node);
+            analyzeExpr(node, scope);
             discard([")"]);
         }
         else {
@@ -845,38 +847,41 @@ function analyze(token, pgrmNum) {
             token = token.next;
         }
     }
-    function analyzeAssign(parent) {
+    function analyzeAssign(parent, scope) {
         let node = branchNode("ASSIGN", parent);
         //ID
         node.addChild(new TNode(token.symbol, token));
         token = token.next;
         discard(["="]);
         //VALUE
-        analyzeExpr(node);
+        analyzeExpr(node, scope);
     }
-    function analyzeVarDecl(parent) {
+    function analyzeVarDecl(parent, scope) {
         let node = branchNode("VAR_DECL", parent);
         //TYPE
         node.addChild(new TNode(token.symbol, token));
+        let type = token;
         token = token.next;
         //ID
         node.addChild(new TNode(token.symbol, token));
+        let name = token;
         token = token.next;
+        scope.insert(name, type);
     }
-    function analyzeWhileStatement(parent) {
+    function analyzeWhileStatement(parent, scope) {
         let node = branchNode("WHILE", parent);
         discard(["while"]);
-        analyzeBoolExpr(node);
+        analyzeBoolExpr(node, scope);
         //Block to be run
-        analyzeBlock(node);
+        analyzeBlock(node, scope);
     }
-    function analyzeIfStatement(parent) {
+    function analyzeIfStatement(parent, scope) {
         let node = branchNode("IF", parent);
         discard(["if"]);
         //Conditional
-        analyzeBoolExpr(node);
+        analyzeBoolExpr(node, scope);
         //Block to be run if conditional TRUE
-        analyzeBlock(node);
+        analyzeBlock(node, scope);
     }
     //Create custom Error object
     function error(msg) {
@@ -895,50 +900,6 @@ function analyze(token, pgrmNum) {
                 throw error(`Expected '${char}' found '${token.symbol}'` +
                     ` at line: ${token.line} col: ${token.col}.`);
             }
-        }
-    }
-}
-class SymbolTable {
-    constructor() {
-        this.table = {};
-    }
-    insert(nameTok, typeTok) {
-        this.table[nameTok.value] = { name: nameTok, type: typeTok,
-            initialized: false, used: false };
-    }
-    lookup(name) {
-        return this.table[name];
-    }
-    toString() {
-        let str = "";
-        let keys = Object.keys(this.table);
-        let name = "";
-        let type = "";
-        for (let i = 0; i < keys.length; i++) {
-            name = this.lookup(keys[i]).name.value;
-            type = this.lookup(keys[i]).type;
-            str += `[name: ${name}, type: ${type}]\n`;
-        }
-        return str;
-    }
-    length() {
-        return Object.keys(this.table).length;
-    }
-}
-class Token {
-    constructor(name, symbol, line, col, value) {
-        this.name = name;
-        this.symbol = symbol;
-        this.line = line;
-        this.col = col;
-        this.value = value;
-    }
-    toString() {
-        if (this.value === undefined) {
-            return this.name;
-        }
-        else {
-            return this.name + ", " + this.value;
         }
     }
 }
@@ -995,7 +956,7 @@ class BaseNode {
     }
 }
 function branchNode(name, parent) {
-    let node = new TNode(name);
+    let node = new BaseNode(name);
     parent.addChild(node);
     return node;
 }
@@ -1006,20 +967,53 @@ class TNode extends BaseNode {
         this.token = token;
     }
 }
-//Symbol Tree
-class SNode extends BaseNode {
-    constructor() {
+/// <reference path="Tree.ts"/>
+class SymbolTable extends BaseNode {
+    constructor(parent) {
         super(null);
-        this.sTable = new SymbolTable();
+        this.table = {};
+        if (parent !== undefined) {
+            parent.addChild(this);
+        }
     }
     insert(nameTok, typeTok) {
-        this.sTable.insert(nameTok, typeTok);
+        this.table[nameTok.value] = { name: nameTok, type: typeTok,
+            initialized: false, used: false };
     }
     lookup(name) {
-        return this.sTable.lookup(name);
+        return this.table[name];
+    }
+    toString() {
+        let str = "";
+        let keys = Object.keys(this.table);
+        let name = "";
+        let type = "";
+        for (let i = 0; i < keys.length; i++) {
+            name = this.lookup(keys[i]).name.value;
+            type = this.lookup(keys[i]).type;
+            str += `[name: ${name}, type: ${type}]\n`;
+        }
+        return str;
     }
     length() {
-        return this.sTable.length;
+        return Object.keys(this.table).length;
+    }
+}
+class Token {
+    constructor(name, symbol, line, col, value) {
+        this.name = name;
+        this.symbol = symbol;
+        this.line = line;
+        this.col = col;
+        this.value = value;
+    }
+    toString() {
+        if (this.value === undefined) {
+            return this.name;
+        }
+        else {
+            return this.name + ", " + this.value;
+        }
     }
 }
 //# sourceMappingURL=compiler.js.map

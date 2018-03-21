@@ -1,11 +1,11 @@
 function analyze(token: Token, pgrmNum: number): TNode {
   let numWarns: number = 0;
-  
 
   //Initial parsing of Program
   try {
     let root = new TNode("Program");
-    analyzeBlock(root);
+    let sRoot = new SymbolTable(); //Placholder root SymbolTable
+    analyzeBlock(root, sRoot);
 
     //Remove the placeholder "Program" node and make the root the first block
     root = root.children[0];
@@ -31,38 +31,39 @@ function analyze(token: Token, pgrmNum: number): TNode {
     }
   }
 
-  function analyzeBlock(parent: TNode) {
+  function analyzeBlock(parent: TNode, scope: SymbolTable) {
     let node = branchNode("BLOCK", parent);
+    let sTable = new SymbolTable(scope);
     discard(["{"]);
-    analyzeStatements(node);
+    analyzeStatements(node, sTable);
     discard(["}"]);
   }
 
-  function analyzeStatements(parent: TNode) {
+  function analyzeStatements(parent: TNode, scope: SymbolTable) {
     switch (token.name) {
       case "PRINT":
-        analyzePrint(parent);
+        analyzePrint(parent, scope);
         break;
       case "ID":
-        analyzeAssign(parent);
+        analyzeAssign(parent, scope);
         break;
       case "INT":
-        analyzeVarDecl(parent);
+        analyzeVarDecl(parent, scope);
         break;
       case "STRING":
-        analyzeVarDecl(parent);
+        analyzeVarDecl(parent, scope);
         break;
       case "BOOLEAN":
-        analyzeVarDecl(parent);
+        analyzeVarDecl(parent, scope);
         break;
       case "WHILE":
-        analyzeWhileStatement(parent);
+        analyzeWhileStatement(parent, scope);
         break;
       case "IF":
-        analyzeIfStatement(parent);
+        analyzeIfStatement(parent, scope);
         break;
       case "LBRACE":
-        analyzeBlock(parent);
+        analyzeBlock(parent, scope);
         break;
       case "RBRACE":
         //Empty StatementList
@@ -72,17 +73,17 @@ function analyze(token: Token, pgrmNum: number): TNode {
         throw error(`Invalid token ${token.name} found at ${token.line}:${token.col}`);
     }
     //Look at the next statement in (possibly empty) list
-    analyzeStatements(parent);
+    analyzeStatements(parent, scope);
   }
 
-  function analyzePrint(parent: TNode) {
+  function analyzePrint(parent: TNode, scope: SymbolTable) {
     let node = branchNode("PRINT", parent);
     discard(["print","("]);
-    analyzeExpr(node);
+    analyzeExpr(node, scope);
     discard([")"]);
   }
 
-  function analyzeExpr(parent: TNode) {
+  function analyzeExpr(parent: TNode, scope: SymbolTable) {
     switch (token.name) {
       case "DIGIT":
         if (token.next.symbol === "+") {
@@ -93,7 +94,7 @@ function analyze(token: Token, pgrmNum: number): TNode {
           node.addChild(new TNode(token.symbol, token));
           //2nd DIGIT/rest of EXPR
           token = token.next.next;
-          analyzeExpr(node);
+          analyzeExpr(node, scope);
         } else {
           //Just a DIGIT
           parent.addChild(new TNode(token.symbol, token));
@@ -107,10 +108,10 @@ function analyze(token: Token, pgrmNum: number): TNode {
         discard(['"']);
         break;
       case "LPAREN":
-        analyzeBoolExpr(parent);
+        analyzeBoolExpr(parent, scope);
         break;
       case "BOOLVAL":
-        analyzeBoolExpr(parent);
+        analyzeBoolExpr(parent, scope);
         break;
       case "ID":
         parent.addChild(new TNode(token.symbol, token));
@@ -123,15 +124,15 @@ function analyze(token: Token, pgrmNum: number): TNode {
     }
   }
 
-  function analyzeBoolExpr(parent: TNode) {
+  function analyzeBoolExpr(parent: TNode, scope: SymbolTable) {
     if (token.symbol === "(") {
       //BooleanExpr
       let node = branchNode("BOOL_EXPR", parent);
       discard(["("]);
-      analyzeExpr(node);
+      analyzeExpr(node, scope);
       node.addChild(new TNode(token.symbol, token)); //BoolOp (== or !=)
       token = token.next;
-      analyzeExpr(node);
+      analyzeExpr(node, scope);
       discard([")"]);
     } else {
       //BoolVal
@@ -140,41 +141,44 @@ function analyze(token: Token, pgrmNum: number): TNode {
     }
   }
 
-  function analyzeAssign(parent: TNode) {
+  function analyzeAssign(parent: TNode, scope: SymbolTable) {
     let node = branchNode("ASSIGN", parent);
     //ID
     node.addChild(new TNode(token.symbol, token));
     token = token.next;
     discard(["="]);
     //VALUE
-    analyzeExpr(node);
+    analyzeExpr(node, scope);
   }
 
-  function analyzeVarDecl(parent: TNode) {
+  function analyzeVarDecl(parent: TNode, scope: SymbolTable) {
     let node = branchNode("VAR_DECL", parent);
     //TYPE
     node.addChild(new TNode(token.symbol, token));
+    let type = token;
     token = token.next;
     //ID
     node.addChild(new TNode(token.symbol, token));
+    let name = token;
     token = token.next;
+    scope.insert(name, type);
   }
 
-  function analyzeWhileStatement(parent: TNode) {
+  function analyzeWhileStatement(parent: TNode, scope: SymbolTable) {
     let node = branchNode("WHILE", parent);
     discard(["while"]);
-    analyzeBoolExpr(node);
+    analyzeBoolExpr(node, scope);
     //Block to be run
-    analyzeBlock(node);
+    analyzeBlock(node, scope);
   }
 
-  function analyzeIfStatement(parent: TNode) {
+  function analyzeIfStatement(parent: TNode, scope: SymbolTable) {
     let node = branchNode("IF", parent);
     discard(["if"]);
     //Conditional
-    analyzeBoolExpr(node);
+    analyzeBoolExpr(node, scope);
     //Block to be run if conditional TRUE
-    analyzeBlock(node);
+    analyzeBlock(node, scope);
   }
 
   //Create custom Error object

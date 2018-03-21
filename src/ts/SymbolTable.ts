@@ -1,8 +1,14 @@
-class SymbolTable {
+/// <reference path="Tree.ts"/>
+class SymbolTable extends BaseNode {
 
   private table: HashTable = {};
 
-  constructor() { }
+  constructor(parent?: SymbolTable) {
+    super(null)
+    if (parent !== undefined) {
+      parent.addChild(this);
+    }
+  }
 
   public insert(nameTok: Token, typeTok: Token) {
     this.table[nameTok.value] = {name:nameTok, type:typeTok,
