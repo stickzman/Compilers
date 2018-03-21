@@ -10,7 +10,12 @@ function analyze(token: Token, pgrmNum: number): TNode {
     root = root.children[0];
 
     Log.breakLine();
-    Log.print(root.toString());
+    Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
+    Log.print(root.toString(), LogPri.VERBOSE);
+
+    Log.breakLine();
+    Log.print(`Semantic Analyzer processed Program ${pgrmNum} ` +
+              `with ${numWarns} warnings and 0 errors`);
 
     return root;
   } catch (e) {
@@ -26,15 +31,13 @@ function analyze(token: Token, pgrmNum: number): TNode {
   }
 
   function analyzeBlock(parent: TNode) {
-    let node = branchNode("Block", parent);
+    let node = branchNode("BLOCK", parent);
     discard(["{"]);
     analyzeStatements(node);
     discard(["}"]);
   }
 
   function analyzeStatements(parent: TNode) {
-    let possibleTerminals = ["PRINT", "ID", "INT", "STRING", "BOOLEAN", "WHILE",
-                             "IF", "LBRACE"];
     switch (token.name) {
       case "PRINT":
         analyzePrint(parent);
@@ -51,14 +54,12 @@ function analyze(token: Token, pgrmNum: number): TNode {
       case "BOOLEAN":
         analyzeVarDecl(parent);
         break;
-        /*
       case "WHILE":
         analyzeWhileStatement(parent);
         break;
       case "IF":
         analyzeIfStatement(parent);
         break;
-        */
       case "LBRACE":
         analyzeBlock(parent);
         break;
@@ -69,11 +70,12 @@ function analyze(token: Token, pgrmNum: number): TNode {
         //This should never be run
         throw error(`Invalid token ${token.name} found at ${token.line}:${token.col}`);
     }
+    //Look at the next statement in (possibly empty) list
     analyzeStatements(parent);
   }
 
   function analyzePrint(parent: TNode) {
-    let node = branchNode("Print", parent);
+    let node = branchNode("PRINT", parent);
     discard(["print","("]);
     analyzeExpr(node);
     discard([")"]);
@@ -97,27 +99,19 @@ function analyze(token: Token, pgrmNum: number): TNode {
           token = token.next;
         }
         break;
-      case "QUOTE":
+      case "QUOTE":{
+        let node = branchNode("STRING", parent);
         discard(['"']);
-        parent.addChild(new TNode(token.symbol, token)); //CHARLIST
+        node.addChild(new TNode(token.symbol, token)); //CHARLIST
         token = token.next;
         discard(['"']);
         break;
+      }
       case "LPAREN":
-        //BooleanExpr
-        let node = branchNode("BooleanExpr", parent);
-        discard(["("]);
-        analyzeExpr(node);
-        //BoolOp (== or !=)
-        parent.addChild(new TNode(token.symbol, token));
-        token = token.next;
-        analyzeExpr(node);
-        discard([")"]);
+        analyzeBoolExpr(parent);
         break;
       case "BOOLEAN":
-        //BoolVal
-        parent.addChild(new TNode(token.symbol, token));
-        token = token.next;
+        analyzeBoolExpr(parent);
         break;
       case "ID":
         parent.addChild(new TNode(token.symbol, token));
@@ -130,8 +124,25 @@ function analyze(token: Token, pgrmNum: number): TNode {
     }
   }
 
+  function analyzeBoolExpr(parent: TNode) {
+    if (token.symbol === "(") {
+      //BooleanExpr
+      let node = branchNode("BOOL_EXPR", parent);
+      discard(["("]);
+      analyzeExpr(node);
+      node.addChild(new TNode(token.symbol, token)); //BoolOp (== or !=)
+      token = token.next;
+      analyzeExpr(node);
+      discard([")"]);
+    } else {
+      //BoolVal
+      parent.addChild(new TNode(token.symbol, token));
+      token = token.next;
+    }
+  }
+
   function analyzeAssign(parent: TNode) {
-    let node = branchNode("Assign", parent);
+    let node = branchNode("ASSIGN", parent);
     //ID
     node.addChild(new TNode(token.symbol, token));
     token = token.next;
@@ -141,13 +152,30 @@ function analyze(token: Token, pgrmNum: number): TNode {
   }
 
   function analyzeVarDecl(parent: TNode) {
-    let node = branchNode("VarDecl", parent);
+    let node = branchNode("VAR_DECL", parent);
     //TYPE
     node.addChild(new TNode(token.symbol, token));
     token = token.next;
     //ID
     node.addChild(new TNode(token.symbol, token));
     token = token.next;
+  }
+
+  function analyzeWhileStatement(parent: TNode) {
+    let node = branchNode("WHILE", parent);
+    discard(["while"]);
+    analyzeBoolExpr(node);
+    //Block to be run
+    analyzeBlock(node);
+  }
+
+  function analyzeIfStatement(parent: TNode) {
+    let node = branchNode("IF", parent);
+    discard(["if"]);
+    //Conditional
+    analyzeBoolExpr(node);
+    //Block to be run if conditional TRUE
+    analyzeBlock(node);
   }
 
   //Create custom Error object

@@ -192,7 +192,7 @@ function lex(source: string, lineNum: number, charNum: number, pgrmNum: number):
         }
         return token;
       case '+':
-        token = createToken("+", "INTOP", last);
+        token = createToken("+", "ADD", last);
         charNum += 1;
         getTokens(source.substring(1), token);
         return token;

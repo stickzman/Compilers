@@ -38,6 +38,8 @@ function compile() {
     Log.print("Parsing Program " + (i+1) + "...");
     let CST = parse(tokenLinkedList, i+1);
     if (CST === null) {continue;}
+    Log.breakLine();
+    Log.print("Analyzing Program " + (i+1) + "...");
     let AST = analyze(tokenLinkedList, i+1);
     if (AST === null) {continue;}
   }
