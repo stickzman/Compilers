@@ -17,6 +17,10 @@ class TNode {
     return this.children.length > 0;
   }
 
+  public getSiblings() {
+    return this.parent.children;
+  }
+
   public getLeafNodes() {
     let leaves = [];
     for (let i = 0; i < this.children.length; i++) {
@@ -52,5 +56,10 @@ class TNode {
 
     return str;
   }
+}
 
+function branchNode(name: string, parent: TNode) {
+  let node = new TNode(name);
+  parent.addChild(node);
+  return node;
 }

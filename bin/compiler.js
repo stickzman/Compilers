@@ -14,7 +14,7 @@ function compile() {
         else if (/.*\/\*((?!\*\/).)*$/.test(pgrms[i]) && /^(.(?!\/\*))*\*\//.test(pgrms[i + 1])) {
             //If the last and next programs end and begin with unclosed comment blocks,
             //the '$' was inside a comment and the programs should be put back together
-            pgrms[i] += "$"; //Add the missing'$'
+            pgrms[i] += "$"; //Add the missing '$'
             pgrms[i] = pgrms[i].concat(pgrms[i + 1]);
             pgrms.splice(i + 1, 1);
         }
@@ -39,6 +39,10 @@ function compile() {
         Log.print("Parsing Program " + (i + 1) + "...");
         let CST = parse(tokenLinkedList, i + 1);
         if (CST === null) {
+            continue;
+        }
+        let AST = analyze(tokenLinkedList, i + 1);
+        if (AST === null) {
             continue;
         }
     }
@@ -681,11 +685,6 @@ function parse(token, pgrmNum) {
             parseExpr(node);
         }
     }
-    function branchNode(name, parent) {
-        let node = new TNode(name);
-        parent.addChild(node);
-        return node;
-    }
     function nextToken() {
         token = token.next;
     }
@@ -773,6 +772,9 @@ class TNode {
     hasChildren() {
         return this.children.length > 0;
     }
+    getSiblings() {
+        return this.parent.children;
+    }
     getLeafNodes() {
         let leaves = [];
         for (let i = 0; i < this.children.length; i++) {
@@ -804,6 +806,90 @@ class TNode {
         }
         expand(this, 0);
         return str;
+    }
+}
+function branchNode(name, parent) {
+    let node = new TNode(name);
+    parent.addChild(node);
+    return node;
+}
+function analyze(token, pgrmNum) {
+    let numWarns = 0;
+    //Initial parsing of Program
+    try {
+        let root = new TNode("Program");
+        analyzeBlock(root);
+        return root;
+    }
+    catch (e) {
+        if (e.name === "Parse_Error") {
+            Log.print(e, LogPri.ERROR);
+            Log.print("");
+            Log.print(`Parsed Program ${pgrmNum} with ${numWarns} warnings and 1 errors.`);
+            return null;
+        }
+        else {
+            //If the error is not created by my parser, continue to throw it
+            throw e;
+        }
+    }
+    function analyzeBlock(parent) {
+        let node = branchNode("Block", parent);
+        discard(["{"]);
+        analyzeStatements(node);
+        discard(["}"]);
+    }
+    function analyzeStatements(parent) {
+        let possibleTerminals = ["PRINT", "ID", "INT", "STRING", "BOOLEAN", "WHILE",
+            "IF", "LBRACE"];
+        switch (token.name) {
+            case "PRINT":
+                analyzePrint(parent);
+                break;
+            case "ID":
+                analyzeAssign(parent);
+                break;
+            case "INT":
+                analyzeVarDecl(parent);
+                break;
+            case "STRING":
+                analyzeVarDecl(parent);
+                break;
+            case "BOOLEAN":
+                analyzeVarDecl(parent);
+                break;
+            case "WHILE":
+                analyzeWhileStatement(parent);
+                break;
+            case "IF":
+                analyzeIfStatement(parent);
+                break;
+            case "LBRACE":
+                analyzeBlock(parent);
+                break;
+            default:
+                //This should never be run
+                throw error(`Invalid token ${token.name} found at ${token.line}:${token.col}`);
+        }
+    }
+    //Create custom Error object
+    function error(msg) {
+        let e = new Error(msg);
+        e.name = "Semantic_Error";
+        return e;
+    }
+    function discard(tList) {
+        for (let char of tList) {
+            if (token.symbol === char) {
+                //Discard the current token and move to the next
+                token = token.next;
+            }
+            else {
+                //This should not be called.
+                throw error(`Expected '${char}' found '${token.symbol}'` +
+                    ` at line: ${token.line} col: ${token.col}.`);
+            }
+        }
     }
 }
 //# sourceMappingURL=compiler.js.map

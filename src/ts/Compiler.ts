@@ -15,7 +15,7 @@ function compile() {
     } else if (/.*\/\*((?!\*\/).)*$/.test(pgrms[i]) && /^(.(?!\/\*))*\*\//.test(pgrms[i+1])) {
       //If the last and next programs end and begin with unclosed comment blocks,
       //the '$' was inside a comment and the programs should be put back together
-      pgrms[i] += "$"; //Add the missing'$'
+      pgrms[i] += "$"; //Add the missing '$'
       pgrms[i] = pgrms[i].concat(pgrms[i+1]);
       pgrms.splice(i+1, 1);
     } else {
@@ -38,8 +38,8 @@ function compile() {
     Log.print("Parsing Program " + (i+1) + "...");
     let CST = parse(tokenLinkedList, i+1);
     if (CST === null) {continue;}
+    let AST = analyze(tokenLinkedList, i+1);
+    if (AST === null) {continue;}
   }
-
-
 
 }

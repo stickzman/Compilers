@@ -234,13 +234,6 @@ function parse(token: Token, pgrmNum: number): TNode {
     }
   }
 
-
-  function branchNode(name: string, parent: TNode) {
-    let node = new TNode(name);
-    parent.addChild(node);
-    return node;
-  }
-
   function nextToken() {
     token = token.next;
   }
