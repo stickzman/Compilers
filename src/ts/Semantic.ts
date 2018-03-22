@@ -7,8 +7,9 @@ function analyze(token: Token, pgrmNum: number): TNode {
     let sRoot = new SymbolTable(); //Placholder root SymbolTable
     analyzeBlock(root, sRoot);
 
-    //Remove the placeholder "Program" node and make the root the first block
+    //Remove the intial placeholder root nodes
     root = root.children[0];
+    sRoot = <SymbolTable>sRoot.children[0];
 
     Log.breakLine();
     Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
@@ -86,20 +87,7 @@ function analyze(token: Token, pgrmNum: number): TNode {
   function analyzeExpr(parent: TNode, scope: SymbolTable) {
     switch (token.name) {
       case "DIGIT":
-        if (token.next.symbol === "+") {
-          //ADD Operation
-          let node = new TNode(token.next.name, token.next);
-          parent.addChild(node);
-          //1st DIGIT
-          node.addChild(new TNode(token.symbol, token));
-          //2nd DIGIT/rest of EXPR
-          token = token.next.next;
-          analyzeExpr(node, scope);
-        } else {
-          //Just a DIGIT
-          parent.addChild(new TNode(token.symbol, token));
-          token = token.next;
-        }
+        analyzeAddExpr(parent, scope);
         break;
       case "QUOTE":
         discard(['"']);
@@ -114,6 +102,14 @@ function analyze(token: Token, pgrmNum: number): TNode {
         analyzeBoolExpr(parent, scope);
         break;
       case "ID":
+        //SymbolTable lookup
+        let symEntry = getSymEntry(token, scope);
+        if (!symEntry.initialized) {
+          Log.print(`Semantic_Warning: Utilizing unintialized variable `+
+                    `'${token.symbol}' at line: ${token.line} col: ${token.col}`,
+                    LogPri.WARNING);
+        }
+        symEntry.used = true;
         parent.addChild(new TNode(token.symbol, token));
         token = token.next;
         break;
@@ -121,6 +117,36 @@ function analyze(token: Token, pgrmNum: number): TNode {
         //This should never be called.
         throw error(`Cannot start Expression with [${token.name}] `+
                     `at ${token.line}:${token.col}`);
+    }
+  }
+
+  function analyzeAddExpr(parent: TNode, scope: SymbolTable) {
+    if (token.next.symbol === "+") {
+      //ADD Operation
+      let node = new TNode(token.next.name, token.next);
+      parent.addChild(node);
+      //1st DIGIT
+      node.addChild(new TNode(token.symbol, token));
+      //2nd DIGIT/rest of EXPR
+      token = token.next.next;
+      if (token.name === "ID") {
+        //Type-Check
+        let symEntry = getSymEntry(token, scope);
+        let type = symEntry.typeTok.name;
+        if (type !== "INT") {
+          throw error(`Type Mismatch: Attempted to add [${type}] ` +
+                      `to [DIGIT] at line: ${token.line} col: ${token.col}`);
+        }
+      } else if (token.name !== "DIGIT") {
+        //Not a DIGIT or a integer variable
+        throw error(`Type Mismatch: Attempted to add [${token.name}] ` +
+                    `to [DIGIT] at line: ${token.line} col: ${token.col}`);
+      }
+      analyzeExpr(node, scope);
+    } else {
+      //Just a DIGIT
+      parent.addChild(new TNode(token.symbol, token));
+      token = token.next;
     }
   }
 
@@ -142,6 +168,53 @@ function analyze(token: Token, pgrmNum: number): TNode {
   }
 
   function analyzeAssign(parent: TNode, scope: SymbolTable) {
+    //SymbolTable lookup
+    let symEntry = getSymEntry(token, scope);
+    //Type-checking
+    let type = symEntry.typeTok.name;
+    let value = token.next.next;
+    switch (value.name) {
+      case "DIGIT":
+        //IntExpr
+        if (type !== "INT") {
+          throw typeError(token, type, "INT");
+        }
+        break;
+      case "QUOTE":
+        //StringExpr
+        if (type !== "STRING") {
+          throw typeError(token, type, "STRING");
+        }
+        break;
+      case "BOOLVAL":
+        //BooleanExpr
+        if (type !== "BOOLEAN") {
+          throw typeError(token, type, "BOOLEAN");
+        }
+        break;
+      case "LPAREN":
+        //BooleanExpr
+        if (type !== "BOOLEAN") {
+          throw typeError(token, type, "BOOLEAN");
+        }
+        break;
+      case "ID":
+        let valEntry = getSymEntry(token, scope);
+        if (!valEntry.initialized) {
+          Log.print(`Semantic_Warning: Assigning unintialized variable `+
+                    `'${valEntry.nameTok.symbol}' to variable '${token.symbol}' ` +
+                    `on line: ${token.line}`, LogPri.WARNING);
+          numWarns++;
+        }
+        valEntry.used = true; //The variable being assigned is being used
+        if (valEntry.typeTok.name !== type) {
+          throw typeError(token, type, valEntry.typeTok.name);
+        }
+        break;
+    }
+    //Initialize variable
+    symEntry.initialized = true;
+    symEntry.used = true;
     let node = branchNode("ASSIGN", parent);
     //ID
     node.addChild(new TNode(token.symbol, token));
@@ -181,11 +254,26 @@ function analyze(token: Token, pgrmNum: number): TNode {
     analyzeBlock(node, scope);
   }
 
+  function getSymEntry(tok: Token, scope: SymbolTable) {
+    let symEntry = scope.lookup(token.symbol);
+    if (symEntry === undefined) {
+      //Cannot find ID in this/higher scope, therefore it is undeclared.
+      throw error(`Undeclared variable '${token.symbol}' `+
+                  `found at line: ${token.line} col:${token.col}`);
+    }
+    return symEntry;
+  }
+
   //Create custom Error object
   function error(msg: string) {
     let e = new Error(msg);
     e.name = "Semantic_Error";
     return e;
+  }
+
+  function typeError(assignTok: Token, assignType: string, valType: string) {
+    return error(`Type Mismatch: attempted to assign [${valType}] to `+
+                ` [${assignType}] on line ${assignTok.line}`);
   }
 
   function discard(tList: string[]) {
