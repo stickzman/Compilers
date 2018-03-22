@@ -9,11 +9,19 @@ function analyze(token: Token, pgrmNum: number): TNode {
 
     //Remove the intial placeholder root nodes
     root = root.children[0];
+    root.parent = null;
     sRoot = <SymbolTable>sRoot.children[0];
+    sRoot.parent = null;
+
 
     Log.breakLine();
     Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
     Log.print(root.toString(), LogPri.VERBOSE);
+
+    Log.breakLine();
+    Log.print(`Program ${pgrmNum} Symbol Table`, LogPri.VERBOSE);
+    Log.dottedLine(LogPri.VERBOSE);
+    Log.print(sRoot.toString());
 
     Log.breakLine();
     Log.print(`Semantic Analyzer processed Program ${pgrmNum} ` +
@@ -234,6 +242,10 @@ function analyze(token: Token, pgrmNum: number): TNode {
     node.addChild(new TNode(token.symbol, token));
     let name = token;
     token = token.next;
+    if (scope.table[name.symbol] !== undefined) {
+      throw error(`Attempted to redeclare variable '${name.symbol}' at `+
+                  `line: ${name.line} col: ${name.col}`);
+    }
     scope.insert(name, type);
   }
 

@@ -463,6 +463,9 @@ class Log {
         if (!Log.isLastLineClear())
             Log.print("", LogPri.ERROR);
     }
+    static dottedLine(pri) {
+        Log.print("-------------------------------------", pri);
+    }
 }
 Log.level = LogPri.VERBOSE;
 function parse(token, pgrmNum) {
@@ -477,11 +480,13 @@ function parse(token, pgrmNum) {
         //Display Concrete Syntax Tree
         Log.breakLine();
         Log.print("CST for Program " + pgrmNum + ":\n" + root.toString(), LogPri.VERBOSE);
+        /*
         //Print Symbol Table
         if (symTable.length() > 0) {
-            Log.breakLine();
-            Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
+          Log.breakLine();
+          Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
         }
+        */
         Log.breakLine();
         Log.print(`Parsed Program ${pgrmNum} with ${numWarns} warnings and 0 errors.`);
         //Return completed Concrete Syntax Tree
@@ -720,10 +725,16 @@ function analyze(token, pgrmNum) {
         analyzeBlock(root, sRoot);
         //Remove the intial placeholder root nodes
         root = root.children[0];
+        root.parent = null;
         sRoot = sRoot.children[0];
+        sRoot.parent = null;
         Log.breakLine();
         Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
         Log.print(root.toString(), LogPri.VERBOSE);
+        Log.breakLine();
+        Log.print(`Program ${pgrmNum} Symbol Table`, LogPri.VERBOSE);
+        Log.dottedLine(LogPri.VERBOSE);
+        Log.print(sRoot.toString());
         Log.breakLine();
         Log.print(`Semantic Analyzer processed Program ${pgrmNum} ` +
             `with ${numWarns} warnings and 0 errors`);
@@ -938,6 +949,10 @@ function analyze(token, pgrmNum) {
         node.addChild(new TNode(token.symbol, token));
         let name = token;
         token = token.next;
+        if (scope.table[name.symbol] !== undefined) {
+            throw error(`Attempted to redeclare variable '${name.symbol}' at ` +
+                `line: ${name.line} col: ${name.col}`);
+        }
         scope.insert(name, type);
     }
     function analyzeWhileStatement(parent, scope) {
@@ -1082,14 +1097,19 @@ class SymbolTable extends BaseNode {
     }
     toString() {
         let str = "";
-        let keys = Object.keys(this.table);
-        let name = "";
-        let type = "";
-        for (let i = 0; i < keys.length; i++) {
-            name = this.lookup(keys[i]).nameTok.symbol;
-            type = this.lookup(keys[i]).typeTok.name;
-            str += `[name: ${name}, type: ${type}]\n`;
+        if (this.parent === null) {
+            str += "Name\tType\tScope\tLine\n";
         }
+        /*
+        let keys = Object.keys(this.table);
+        let name: string = "";
+        let type: string = "";
+        for (let i = 0; i < keys.length; i++) {
+          name = this.lookup(keys[i]).nameTok.symbol;
+          type = this.lookup(keys[i]).typeTok.name;
+          str += `[name: ${name}, type: ${type}]\n`;
+        }
+        */
         return str;
     }
     length() {

@@ -1,7 +1,7 @@
 /// <reference path="Tree.ts"/>
 class SymbolTable extends BaseNode {
 
-  private table: HashTable = {};
+  public table: HashTable = {};
 
   constructor(parent?: SymbolTable) {
     super(null)
@@ -32,6 +32,10 @@ class SymbolTable extends BaseNode {
 
   public toString(): string {
     let str = "";
+    if (this.parent === null) {
+      str += "Name\tType\tScope\tLine\n";
+    }
+    /*
     let keys = Object.keys(this.table);
     let name: string = "";
     let type: string = "";
@@ -40,6 +44,7 @@ class SymbolTable extends BaseNode {
       type = this.lookup(keys[i]).typeTok.name;
       str += `[name: ${name}, type: ${type}]\n`;
     }
+    */
     return str;
   }
 

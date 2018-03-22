@@ -13,11 +13,13 @@ function parse(token: Token, pgrmNum: number): TNode {
     Log.breakLine();
     Log.print("CST for Program " + pgrmNum + ":\n" + root.toString(), LogPri.VERBOSE);
 
+    /*
     //Print Symbol Table
     if (symTable.length() > 0) {
       Log.breakLine();
       Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
     }
+    */
 
     Log.breakLine();
     Log.print(`Parsed Program ${pgrmNum} with ${numWarns} warnings and 0 errors.`);

@@ -99,4 +99,8 @@ class Log {
     if (!Log.isLastLineClear()) Log.print("", LogPri.ERROR);
   }
 
+  public static dottedLine(pri: LogPri) {
+    Log.print("-------------------------------------", pri);
+  }
+
 }
