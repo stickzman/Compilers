@@ -31,7 +31,7 @@ class SymbolTable extends BaseNode {
   }
 
   public toString(): string {
-    let str = "Name\tType\tScope\tLine\n";
+    let str = "";
     let depth = 0;
 
     //Print this Symbol Table if its the root
@@ -39,36 +39,32 @@ class SymbolTable extends BaseNode {
     let entry;
     for (let i = 0; i < keys.length; i++) {
       entry = this.table[keys[i]];
-      str += `${entry.nameTok.symbol}\t\t${entry.typeTok.name}\t\t` +
-      `${depth}\t\t${entry.nameTok.line}\n`;
+      str += `[Name: ${entry.nameTok.symbol}, Type: ${entry.typeTok.name},` +
+              ` Scope: ${depth}, Line: ${entry.nameTok.line}]\n`;
     }
 
     function printChildren(node: SymbolTable, depth: number) {
       //Print the SymbolTable's children in order
       depth++;
-      str = "";
       let children = <SymbolTable[]>node.children;
       for (let i = 0; i < children.length; i++) {
         let keys = Object.keys(children[i].table);
         let entry;
         for (let j = 0; j < keys.length; j++) {
           entry = children[i].table[keys[j]];
-          str += `${entry.nameTok.symbol}\t\t${entry.typeTok.name}\t\t` +
-          `${depth}`;
-          str += (children.length > 1) ? "-" + i : "";
-          str += `\t\t${entry.nameTok.line}\n`;
+          str += `[Name: ${entry.nameTok.symbol}, Type: ${entry.typeTok.name}, Scope: `;
+          str += (children.length > 1) ? depth + "-" + i : depth;
+          str += `, Line: ${entry.nameTok.line}]\n`;
         }
       }
 
       //Print each child's children in order
       for (let i = 0; i < children.length; i++) {
-        str += printChildren(children[i], depth);
+        printChildren(children[i], depth);
       }
-
-      return str;
     }
 
-    str += printChildren(this, depth);
+    printChildren(this, depth);
 
     return str;
   }
