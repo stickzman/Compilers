@@ -13,6 +13,7 @@ function analyze(token: Token, pgrmNum: number): TNode {
     sRoot = <SymbolTable>sRoot.children[0];
     sRoot.parent = null;
 
+    checkUnusedVars(sRoot);
 
     Log.breakLine();
     Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
@@ -22,7 +23,7 @@ function analyze(token: Token, pgrmNum: number): TNode {
       Log.breakLine();
       Log.print(`Program ${pgrmNum} Symbol Table`, LogPri.VERBOSE);
       Log.dottedLine(LogPri.VERBOSE);
-      Log.print(sRoot.toString());
+      Log.print(sRoot.toString(), LogPri.VERBOSE);
     }
 
     Log.breakLine();
@@ -39,6 +40,29 @@ function analyze(token: Token, pgrmNum: number): TNode {
     } else {
       //If the error is not created by my parser, continue to throw it
       throw e;
+    }
+  }
+
+  function checkUnusedVars(sNode: SymbolTable) {
+    let keys = Object.keys(sNode.table);
+    for (let key of keys) {
+      let entry = sNode.table[key];
+      if (!entry.used) {
+        numWarns++;
+        if (entry.initialized) {
+          Log.print(`Semantic_Warning: Variable '${entry.nameTok.symbol}' on `+
+                    `line:${entry.nameTok.line} was initialized but never used`,
+                    LogPri.WARNING);
+        } else {
+          Log.print(`Semantic_Warning: Variable '${entry.nameTok.symbol}' was `+
+                    `declared on line:${entry.nameTok.line} but never used`,
+                    LogPri.WARNING);
+        }
+      }
+    }
+    let children = <SymbolTable[]>sNode.children;
+    for (let node of children) {
+      checkUnusedVars(node);
     }
   }
 
@@ -115,6 +139,7 @@ function analyze(token: Token, pgrmNum: number): TNode {
         //SymbolTable lookup
         let symEntry = getSymEntry(token, scope);
         if (!symEntry.initialized) {
+          numWarns++;
           Log.print(`Semantic_Warning: Utilizing unintialized variable `+
                     `'${token.symbol}' at line: ${token.line} col: ${token.col}`,
                     LogPri.WARNING);
@@ -209,12 +234,12 @@ function analyze(token: Token, pgrmNum: number): TNode {
         }
         break;
       case "ID":
-        let valEntry = getSymEntry(token, scope);
+        let valEntry = getSymEntry(value, scope);
         if (!valEntry.initialized) {
+          numWarns++;
           Log.print(`Semantic_Warning: Assigning unintialized variable `+
                     `'${valEntry.nameTok.symbol}' to variable '${token.symbol}' ` +
                     `on line: ${token.line}`, LogPri.WARNING);
-          numWarns++;
         }
         valEntry.used = true; //The variable being assigned is being used
         if (valEntry.typeTok.name !== type) {
@@ -224,7 +249,6 @@ function analyze(token: Token, pgrmNum: number): TNode {
     }
     //Initialize variable
     symEntry.initialized = true;
-    symEntry.used = true;
     let node = branchNode("ASSIGN", parent);
     //ID
     node.addChild(new TNode(token.symbol, token));
