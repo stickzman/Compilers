@@ -18,10 +18,12 @@ function analyze(token: Token, pgrmNum: number): TNode {
     Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
     Log.print(root.toString(), LogPri.VERBOSE);
 
-    Log.breakLine();
-    Log.print(`Program ${pgrmNum} Symbol Table`, LogPri.VERBOSE);
-    Log.dottedLine(LogPri.VERBOSE);
-    Log.print(sRoot.toString());
+    if (!sRoot.isEmpty()) {
+      Log.breakLine();
+      Log.print(`Program ${pgrmNum} Symbol Table`, LogPri.VERBOSE);
+      Log.dottedLine(LogPri.VERBOSE);
+      Log.print(sRoot.toString());
+    }
 
     Log.breakLine();
     Log.print(`Semantic Analyzer processed Program ${pgrmNum} ` +
