@@ -1088,7 +1088,7 @@ class SymbolTable extends BaseNode {
         //Search in this scope first, then search up the tree
         while (node !== null) {
             entry = node.table[name];
-            if (entry === null) {
+            if (entry === undefined) {
                 node = node.parent;
             }
             else {
