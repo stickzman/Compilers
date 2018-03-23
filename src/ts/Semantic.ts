@@ -51,11 +51,11 @@ function analyze(token: Token, pgrmNum: number): TNode {
         numWarns++;
         if (entry.initialized) {
           Log.print(`Semantic_Warning: Variable '${entry.nameTok.symbol}' on `+
-                    `line:${entry.nameTok.line} was initialized but never used`,
+                    `line: ${entry.nameTok.line} was initialized but never used`,
                     LogPri.WARNING);
         } else {
           Log.print(`Semantic_Warning: Variable '${entry.nameTok.symbol}' was `+
-                    `declared on line:${entry.nameTok.line} but never used`,
+                    `declared on line: ${entry.nameTok.line} but never used`,
                     LogPri.WARNING);
         }
       }
@@ -290,7 +290,7 @@ function analyze(token: Token, pgrmNum: number): TNode {
     if (symEntry === undefined) {
       //Cannot find ID in this/higher scope, therefore it is undeclared.
       throw error(`Undeclared variable '${tok.symbol}' `+
-                  `found at line: ${tok.line} col:${tok.col}`);
+                  `found at line: ${tok.line} col: ${tok.col}`);
     }
     return symEntry;
   }

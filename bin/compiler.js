@@ -558,7 +558,7 @@ function parse(token, pgrmNum) {
                 parseBlock(node);
                 return;
             default:
-                throw error(`Unexpected token '${token.symbol}' found at line:${token.line} col:${token.col}`);
+                throw error(`Unexpected token '${token.symbol}' found at line: ${token.line} col: ${token.col}`);
         }
     }
     function parsePrintStatement(parent) {
@@ -585,6 +585,10 @@ function parse(token, pgrmNum) {
         symTable.insert(name, type);
         let idNode = branchNode("ID", node);
         match(["ID"], idNode, false);
+        if (token.symbol === "=") {
+            throw error(`Error found at line: ${token.line} col: ${token.col}. ` +
+                `Variable declaration and assignment cannot be in the same statement`);
+        }
     }
     function parseType(parent) {
         Log.ParseMsg("parseType()");
@@ -600,7 +604,7 @@ function parse(token, pgrmNum) {
                 match(["boolean"], node);
                 return;
             default:
-                throw error(`Expected TYPE token, found ${token.name} at line:${token.line} col:${token.col}`);
+                throw error(`Expected TYPE token, found ${token.name} at line: ${token.line} col: ${token.col}`);
         }
     }
     function parseWhileStatement(parent) {
@@ -643,7 +647,7 @@ function parse(token, pgrmNum) {
                 match(["ID"], idNode, false);
                 return;
             default:
-                throw error(`Expected Expr, found '${token.symbol}' at line:${token.line} col:${token.col}`);
+                throw error(`Expected Expr, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
         }
     }
     function parseStringExpr(parent) {
@@ -674,7 +678,7 @@ function parse(token, pgrmNum) {
                 match(["false"], node);
                 return;
             default:
-                throw error(`Expected BooleanExpr, found '${token.symbol}' at line:${token.line} col:${token.col}`);
+                throw error(`Expected BooleanExpr, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
         }
     }
     function parseBoolOp(parent) {
@@ -687,7 +691,7 @@ function parse(token, pgrmNum) {
             match(["!="], node);
         }
         else {
-            throw error(`Expected BoolOperation, found '${token.symbol}' at line:${token.line} col:${token.col}`);
+            throw error(`Expected BoolOperation, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
         }
     }
     function parseIntExpr(parent) {
@@ -772,11 +776,11 @@ function analyze(token, pgrmNum) {
                 numWarns++;
                 if (entry.initialized) {
                     Log.print(`Semantic_Warning: Variable '${entry.nameTok.symbol}' on ` +
-                        `line:${entry.nameTok.line} was initialized but never used`, LogPri.WARNING);
+                        `line: ${entry.nameTok.line} was initialized but never used`, LogPri.WARNING);
                 }
                 else {
                     Log.print(`Semantic_Warning: Variable '${entry.nameTok.symbol}' was ` +
-                        `declared on line:${entry.nameTok.line} but never used`, LogPri.WARNING);
+                        `declared on line: ${entry.nameTok.line} but never used`, LogPri.WARNING);
                 }
             }
         }
@@ -1001,7 +1005,7 @@ function analyze(token, pgrmNum) {
         if (symEntry === undefined) {
             //Cannot find ID in this/higher scope, therefore it is undeclared.
             throw error(`Undeclared variable '${tok.symbol}' ` +
-                `found at line: ${tok.line} col:${tok.col}`);
+                `found at line: ${tok.line} col: ${tok.col}`);
         }
         return symEntry;
     }

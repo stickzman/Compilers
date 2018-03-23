@@ -92,7 +92,7 @@ function parse(token: Token, pgrmNum: number): TNode {
         parseBlock(node);
         return;
       default:
-        throw error(`Unexpected token '${token.symbol}' found at line:${token.line} col:${token.col}`);
+        throw error(`Unexpected token '${token.symbol}' found at line: ${token.line} col: ${token.col}`);
     }
   }
 
@@ -122,6 +122,10 @@ function parse(token: Token, pgrmNum: number): TNode {
     symTable.insert(name, type);
     let idNode = branchNode("ID", node);
     match(["ID"], idNode, false);
+    if (token.symbol === "=") {
+      throw error(`Error found at line: ${token.line} col: ${token.col}. ` +
+                  `Variable declaration and assignment cannot be in the same statement`);
+    }
   }
 
   function parseType(parent: TNode) {
@@ -138,7 +142,7 @@ function parse(token: Token, pgrmNum: number): TNode {
         match(["boolean"], node);
         return;
       default:
-        throw error(`Expected TYPE token, found ${token.name} at line:${token.line} col:${token.col}`);
+        throw error(`Expected TYPE token, found ${token.name} at line: ${token.line} col: ${token.col}`);
     }
   }
 
@@ -184,7 +188,7 @@ function parse(token: Token, pgrmNum: number): TNode {
         match(["ID"], idNode, false);
         return;
       default:
-        throw error(`Expected Expr, found '${token.symbol}' at line:${token.line} col:${token.col}`);
+        throw error(`Expected Expr, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
     }
   }
 
@@ -217,7 +221,7 @@ function parse(token: Token, pgrmNum: number): TNode {
         match(["false"], node);
         return;
       default:
-        throw error(`Expected BooleanExpr, found '${token.symbol}' at line:${token.line} col:${token.col}`);
+        throw error(`Expected BooleanExpr, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
     }
   }
 
@@ -229,7 +233,7 @@ function parse(token: Token, pgrmNum: number): TNode {
     } else if (token.symbol === "!=") {
       match(["!="], node);
     } else {
-      throw error(`Expected BoolOperation, found '${token.symbol}' at line:${token.line} col:${token.col}`);
+      throw error(`Expected BoolOperation, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
     }
   }
 
