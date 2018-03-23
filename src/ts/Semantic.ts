@@ -212,25 +212,25 @@ function analyze(token: Token, pgrmNum: number): TNode {
       case "DIGIT":
         //IntExpr
         if (type !== "INT") {
-          throw typeError(token, type, "INT");
+          throw typeError(symEntry, value, "INT");
         }
         break;
       case "QUOTE":
         //StringExpr
         if (type !== "STRING") {
-          throw typeError(token, type, "STRING");
+          throw typeError(symEntry, value.next, "STRING");
         }
         break;
       case "BOOLVAL":
         //BooleanExpr
         if (type !== "BOOLEAN") {
-          throw typeError(token, type, "BOOLEAN");
+          throw typeError(symEntry, value, "BOOLEAN");
         }
         break;
       case "LPAREN":
         //BooleanExpr
         if (type !== "BOOLEAN") {
-          throw typeError(token, type, "BOOLEAN");
+          throw typeError(symEntry, value, "BOOLEAN", false);
         }
         break;
       case "ID":
@@ -243,7 +243,7 @@ function analyze(token: Token, pgrmNum: number): TNode {
         }
         valEntry.used = true; //The variable being assigned is being used
         if (valEntry.typeTok.name !== type) {
-          throw typeError(token, type, valEntry.typeTok.name);
+          throw typeError(symEntry, value, valEntry.nameTok);
         }
         break;
     }
@@ -309,9 +309,12 @@ function analyze(token: Token, pgrmNum: number): TNode {
     return e;
   }
 
-  function typeError(assignTok: Token, assignType: string, valType: string) {
-    return error(`Type Mismatch: attempted to assign [${valType}] to `+
-                ` [${assignType}] on line ${assignTok.line}`);
+  function typeError(assignEntry, valToken: Token, valType: string, displayVal: boolean = true) {
+    let msg = `Type Mismatch: attempted to assign [${valType}`;
+    msg += (displayVal) ? `, ${valToken.symbol}] ` : "] ";
+    msg += `to [${assignEntry.typeTok.name}, ${assignEntry.nameTok.symbol}] ` +
+            `at line: ${assignEntry.nameTok.line} col: ${assignEntry.nameTok.col}`;
+    return error(msg);
   }
 
   function discard(tList: string[]) {
