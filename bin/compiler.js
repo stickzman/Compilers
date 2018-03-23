@@ -650,6 +650,11 @@ function parse(token, pgrmNum) {
         Log.ParseMsg("parseStringExpr()");
         let node = branchNode("StringExpr", parent);
         match(["QUOTE", "CHARLIST", "QUOTE"], node, false);
+        if (token.name === "ADD") {
+            throw error(`Error on line: ${token.line} col: ${token.col}. String ` +
+                `concatenation is not supported. Addition symbol '+' can ` +
+                `only be used with single digits/variables`);
+        }
     }
     function parseBooleanExpr(parent) {
         Log.ParseMsg("parseBooleanExpr()");
@@ -703,8 +708,7 @@ function parse(token, pgrmNum) {
         e.name = "Parse_Error";
         return e;
     }
-    //Matches list of tokens by characters
-    //formatted as an array of strings.
+    //Matches list of tokens by characters formatted as an array of strings.
     //Prints error if match not found.
     function match(tList, parent, isSymbol = true) {
         let tokenSym;

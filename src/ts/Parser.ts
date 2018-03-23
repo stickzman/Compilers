@@ -192,6 +192,11 @@ function parse(token: Token, pgrmNum: number): TNode {
     Log.ParseMsg("parseStringExpr()");
     let node = branchNode("StringExpr", parent);
     match(["QUOTE", "CHARLIST", "QUOTE"], node, false);
+    if (token.name === "ADD") {
+      throw error(`Error on line: ${token.line} col: ${token.col}. String ` +
+                  `concatenation is not supported. Addition symbol '+' can ` +
+                  `only be used with single digits/variables`);
+    }
   }
 
   function parseBooleanExpr(parent: TNode) {
@@ -249,8 +254,7 @@ function parse(token: Token, pgrmNum: number): TNode {
     return e;
   }
 
-  //Matches list of tokens by characters
-  //formatted as an array of strings.
+  //Matches list of tokens by characters formatted as an array of strings.
   //Prints error if match not found.
   function match(tList: string[], parent: TNode, isSymbol: boolean = true) {
     let tokenSym;
