@@ -235,13 +235,6 @@ function analyze(token: Token, pgrmNum: number): TNode {
         break;
       case "ID":
         let valEntry = getSymEntry(value, scope);
-        if (!valEntry.initialized) {
-          numWarns++;
-          Log.print(`Semantic_Warning: Assigning unintialized variable `+
-                    `'${valEntry.nameTok.symbol}' to variable '${token.symbol}' ` +
-                    `on line: ${token.line}`, LogPri.WARNING);
-        }
-        valEntry.used = true; //The variable being assigned is being used
         if (valEntry.typeTok.name !== type) {
           throw typeError(symEntry, value, valEntry.typeTok.name);
         }

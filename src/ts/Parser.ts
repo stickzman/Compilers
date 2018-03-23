@@ -176,7 +176,7 @@ function parse(token: Token, pgrmNum: number): TNode {
         return;
       case "ID":
         if (token.next.name === "ADD") {
-          throw error(`Variable '${token.symbol}' found at ${token.line} ` +
+          throw error(`Variable '${token.symbol}' found at line: ${token.line} ` +
                       `col: ${token.col}. Variable identifiers can only be used ` +
                       `as the last element inside of an addition expression`);
         }

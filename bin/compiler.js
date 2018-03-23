@@ -635,7 +635,7 @@ function parse(token, pgrmNum) {
                 return;
             case "ID":
                 if (token.next.name === "ADD") {
-                    throw error(`Variable '${token.symbol}' found at ${token.line} ` +
+                    throw error(`Variable '${token.symbol}' found at line: ${token.line} ` +
                         `col: ${token.col}. Variable identifiers can only be used ` +
                         `as the last element inside of an addition expression`);
                 }
@@ -950,13 +950,6 @@ function analyze(token, pgrmNum) {
                 break;
             case "ID":
                 let valEntry = getSymEntry(value, scope);
-                if (!valEntry.initialized) {
-                    numWarns++;
-                    Log.print(`Semantic_Warning: Assigning unintialized variable ` +
-                        `'${valEntry.nameTok.symbol}' to variable '${token.symbol}' ` +
-                        `on line: ${token.line}`, LogPri.WARNING);
-                }
-                valEntry.used = true; //The variable being assigned is being used
                 if (valEntry.typeTok.name !== type) {
                     throw typeError(symEntry, value, valEntry.typeTok.name);
                 }
