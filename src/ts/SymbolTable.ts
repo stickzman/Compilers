@@ -27,7 +27,7 @@ class SymbolTable extends BaseNode {
          return entry;
        }
     }
-    return null;
+    return undefined;
   }
 
   public toString(): string {

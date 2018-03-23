@@ -1122,7 +1122,7 @@ class SymbolTable extends BaseNode {
                 return entry;
             }
         }
-        return null;
+        return undefined;
     }
     toString() {
         let str = "";
