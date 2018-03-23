@@ -958,7 +958,7 @@ function analyze(token, pgrmNum) {
                 }
                 valEntry.used = true; //The variable being assigned is being used
                 if (valEntry.typeTok.name !== type) {
-                    throw typeError(symEntry, value, valEntry.nameTok);
+                    throw typeError(symEntry, value, valEntry.typeTok.name);
                 }
                 break;
         }
