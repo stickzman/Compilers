@@ -293,11 +293,11 @@ function analyze(token: Token, pgrmNum: number): TNode {
   }
 
   function getSymEntry(tok: Token, scope: SymbolTable) {
-    let symEntry = scope.lookup(token.symbol);
+    let symEntry = scope.lookup(tok.symbol);
     if (symEntry === undefined) {
       //Cannot find ID in this/higher scope, therefore it is undeclared.
-      throw error(`Undeclared variable '${token.symbol}' `+
-                  `found at line: ${token.line} col:${token.col}`);
+      throw error(`Undeclared variable '${tok.symbol}' `+
+                  `found at line: ${tok.line} col:${tok.col}`);
     }
     return symEntry;
   }
