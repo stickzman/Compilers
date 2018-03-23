@@ -470,7 +470,6 @@ class Log {
 Log.level = LogPri.VERBOSE;
 function parse(token, pgrmNum) {
     let numWarns = 0;
-    let symTable = new SymbolTable();
     //Initial parsing of Program
     try {
         Log.ParseMsg("parse()");
@@ -480,13 +479,6 @@ function parse(token, pgrmNum) {
         //Display Concrete Syntax Tree
         Log.breakLine();
         Log.print("CST for Program " + pgrmNum + ":\n" + root.toString(), LogPri.VERBOSE);
-        /*
-        //Print Symbol Table
-        if (symTable.length() > 0) {
-          Log.breakLine();
-          Log.print("Symbol Table:\n" + symTable.toString(), LogPri.VERBOSE);
-        }
-        */
         Log.breakLine();
         Log.print(`Parsed Program ${pgrmNum} with ${numWarns} warnings and 0 errors.`);
         //Return completed Concrete Syntax Tree
@@ -582,7 +574,6 @@ function parse(token, pgrmNum) {
         let type = token;
         parseType(node);
         let name = token;
-        symTable.insert(name, type);
         let idNode = branchNode("ID", node);
         match(["ID"], idNode, false);
         if (token.symbol === "=") {
