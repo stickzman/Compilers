@@ -634,6 +634,11 @@ function parse(token, pgrmNum) {
                 parseBooleanExpr(node);
                 return;
             case "ID":
+                if (token.next.name === "ADD") {
+                    throw error(`Variable '${token.symbol}' found at ${token.line} ` +
+                        `col: ${token.col}. Variable identifiers can only be used ` +
+                        `as the last element inside of an addition expression`);
+                }
                 let idNode = branchNode("ID", node);
                 match(["ID"], idNode, false);
                 return;
