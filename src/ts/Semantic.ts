@@ -27,7 +27,7 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     }
 
     Log.breakLine();
-    Log.print(`Semantic Analyzer processed Program ${pgrmNum} ` +
+    Log.print(`Analyzed Program ${pgrmNum} ` +
               `with ${numWarns} warnings and 0 errors`);
 
     return [root, sRoot];
@@ -38,7 +38,7 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
       Log.print(`Analyzed Program ${pgrmNum} with ${numWarns} warnings and 1 errors.`);
       return null;
     } else {
-      //If the error is not created by my parser, continue to throw it
+      //If the error is not created by my analyzer, continue to throw it
       throw e;
     }
   }
