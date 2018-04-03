@@ -241,8 +241,6 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
         }
         break;
     }
-    //Initialize variable
-    symEntry.initialized = true;
     let node = branchNode("ASSIGN", parent);
     //ID
     node.addChild(new TNode(token.symbol, token));
@@ -250,6 +248,8 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     discard(["="]);
     //VALUE
     analyzeExpr(node, scope);
+    //Initialize variable
+    symEntry.initialized = true;
   }
 
   function analyzeVarDecl(parent: TNode, scope: SymbolTable) {

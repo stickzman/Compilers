@@ -69,7 +69,7 @@ let tests = {
     "Re-declared Variable": "/*Variable re-declared on line 6.  Results in error.*/\n{\n\tstring a\n\ta = \"asdf\"\n\tprint (a)\n\tstring a\n\ta = \"test\"\n}$",
     "Type Mismatch": "/*Attempts to assign integer value to string variable.\nResults in type mismatch error.*/\n{\n\tstring a\n\tint b\n\tb = 9\n\ta = b\n}$",
     "Unused Variables": "/*Variables are declared and unused or initialized and unused.\nBoth result in different warnings.*/\n{\n\tstring a\n\tint b\n\tb = 9\n}$",
-    "Unintialized Variables": "/*Uninitialized variables being used within the program.\nResults in warnings.*/\n{\n\tint a\n\tint b\n\tprint(a)\n\ta = 3 + b\n}$"
+    "Unintialized Variables": "/*Uninitialized variables being used within the program.\nResults in warnings.*/\n{\n\tint a\n\tint b\n\tprint(a)\n\tb = 3 + b\n}$"
 };
 /// <reference path="tests.ts"/>
 //Level of priority for a log message
@@ -958,8 +958,6 @@ function analyze(token, pgrmNum) {
                 }
                 break;
         }
-        //Initialize variable
-        symEntry.initialized = true;
         let node = branchNode("ASSIGN", parent);
         //ID
         node.addChild(new TNode(token.symbol, token));
@@ -967,6 +965,8 @@ function analyze(token, pgrmNum) {
         discard(["="]);
         //VALUE
         analyzeExpr(node, scope);
+        //Initialize variable
+        symEntry.initialized = true;
     }
     function analyzeVarDecl(parent, scope) {
         let node = branchNode("VAR_DECL", parent);

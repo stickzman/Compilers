@@ -33,5 +33,5 @@ let tests = {
   "Unused Variables":
     "/*Variables are declared and unused or initialized and unused.\nBoth result in different warnings.*/\n{\n\tstring a\n\tint b\n\tb = 9\n}$",
   "Unintialized Variables":
-    "/*Uninitialized variables being used within the program.\nResults in warnings.*/\n{\n\tint a\n\tint b\n\tprint(a)\n\ta = 3 + b\n}$"
+    "/*Uninitialized variables being used within the program.\nResults in warnings.*/\n{\n\tint a\n\tint b\n\tprint(a)\n\tb = 3 + b\n}$"
 };
