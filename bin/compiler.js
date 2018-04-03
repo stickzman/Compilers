@@ -43,10 +43,12 @@ function compile() {
         }
         Log.breakLine();
         Log.print("Analyzing Program " + (i + 1) + "...");
-        let AST = analyze(tokenLinkedList, i + 1);
-        if (AST === null) {
+        let res = analyze(tokenLinkedList, i + 1);
+        if (res === null) {
             continue;
         }
+        let AST = res[0];
+        let sTree = res[1];
     }
 }
 //All test cases names and source code to be displayed in console panel
@@ -745,7 +747,7 @@ function analyze(token, pgrmNum) {
         Log.breakLine();
         Log.print(`Semantic Analyzer processed Program ${pgrmNum} ` +
             `with ${numWarns} warnings and 0 errors`);
-        return root;
+        return [root, sRoot];
     }
     catch (e) {
         if (e.name === "Semantic_Error") {
@@ -836,7 +838,8 @@ function analyze(token, pgrmNum) {
                 break;
             case "QUOTE":
                 discard(['"']);
-                parent.addChild(new TNode(token.symbol, token)); //CHARLIST
+                let node = branchNode("CHARLIST", parent);
+                node.addChild(new TNode(token.symbol, token)); //CHARLIST
                 token = token.next;
                 discard(['"']);
                 break;

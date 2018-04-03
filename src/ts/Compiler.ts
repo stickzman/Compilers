@@ -40,8 +40,10 @@ function compile() {
     if (CST === null) {continue;}
     Log.breakLine();
     Log.print("Analyzing Program " + (i+1) + "...");
-    let AST = analyze(tokenLinkedList, i+1);
-    if (AST === null) {continue;}
+    let res = analyze(tokenLinkedList, i+1);
+    if (res === null) {continue;}
+    let AST = res[0];
+    let sTree = res[1];
   }
 
 }

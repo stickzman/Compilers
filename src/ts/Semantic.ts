@@ -1,4 +1,4 @@
-function analyze(token: Token, pgrmNum: number): TNode {
+function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
   let numWarns: number = 0;
 
   //Initial parsing of Program
@@ -30,7 +30,7 @@ function analyze(token: Token, pgrmNum: number): TNode {
     Log.print(`Semantic Analyzer processed Program ${pgrmNum} ` +
               `with ${numWarns} warnings and 0 errors`);
 
-    return root;
+    return [root, sRoot];
   } catch (e) {
     if (e.name === "Semantic_Error") {
       Log.print(e, LogPri.ERROR);
@@ -125,7 +125,8 @@ function analyze(token: Token, pgrmNum: number): TNode {
         break;
       case "QUOTE":
         discard(['"']);
-        parent.addChild(new TNode(token.symbol, token)); //CHARLIST
+        let node = branchNode("CHARLIST", parent);
+        node.addChild(new TNode(token.symbol, token)); //CHARLIST
         token = token.next;
         discard(['"']);
         break;
