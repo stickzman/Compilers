@@ -64,7 +64,12 @@ let tests = {
     "Comment \\n in String": "/* Valid because break line wrapped in comment*/\n{\"two/*\n*/lines\"}$",
     "Multiple Comments in String": "/* All comments removed from string*/\n{\"one/*1234*/ /*test*/lin/**/e/**/\"}$",
     "Missing $": "/*Missing \'$\' from end of program*/\n/*Lexer throws warning and fixes*/\n\n{print(\"test\")}",
-    "Keywords and Special Chars, No Whitespace": "{}print()whileif\"\"intstringbooleanabc123==!=falsetrue+/**/=$"
+    "Keywords and Special Chars, No Whitespace": "{}print()whileif\"\"intstringbooleanabc123==!=falsetrue+/**/=$",
+    "Undeclared Variable": "/*Variable used before declaration.  Results in error.*/\n{\n\ta = \"asdf\"\n\tprint (a)\n}$",
+    "Re-declared Variable": "/*Variable re-declared on line 6.  Results in error.*/\n{\n\tstring a\n\ta = \"asdf\"\n\tprint (a)\n\tstring a\n\ta = \"test\"\n}$",
+    "Type Mismatch": "/*Attempts to assign integer value to string variable.\nResults in type mismatch error.*/\n{\n\tstring a\n\tint b\n\tb = 9\n\ta = b\n}$",
+    "Unused Variables": "/*Variables are declared and unused or initialized and unused.\nBoth result in different warnings.*/\n{\n\tstring a\n\tint b\n\tb = 9\n}$",
+    "Unintialized Variables": "/*Uninitialized variables being used within the program.\nResults in warnings.*/\n{\n\tint a\n\tint b\n\tprint(a)\n\ta = 3 + b\n}$"
 };
 /// <reference path="tests.ts"/>
 //Level of priority for a log message
