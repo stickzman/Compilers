@@ -81,6 +81,17 @@ class Log {
     Log.print(str, priority);
   }
 
+  public static SemMsg(msg: string, priority: LogPri = LogPri.VERBOSE) {
+    let str = "";
+    if (priority == LogPri.WARNING) {
+      str += "Semantic_Warning: ";
+    } else {
+      str += "ANALYZER: ";
+    }
+    str += msg;
+    Log.print(str, priority);
+  }
+
   public static isClear(): boolean {
     return Log.logElem.value.replace(/[ \n]/g, "") == "";
   }

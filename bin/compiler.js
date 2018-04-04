@@ -453,6 +453,17 @@ class Log {
         str += msg;
         Log.print(str, priority);
     }
+    static SemMsg(msg, priority = LogPri.VERBOSE) {
+        let str = "";
+        if (priority == LogPri.WARNING) {
+            str += "Semantic_Warning: ";
+        }
+        else {
+            str += "ANALYZER: ";
+        }
+        str += msg;
+        Log.print(str, priority);
+    }
     static isClear() {
         return Log.logElem.value.replace(/[ \n]/g, "") == "";
     }
@@ -744,6 +755,7 @@ function analyze(token, pgrmNum) {
         root.parent = null;
         sRoot = sRoot.children[0];
         sRoot.parent = null;
+        Log.SemMsg("Checking for unused variables...");
         checkUnusedVars(sRoot);
         Log.breakLine();
         Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
@@ -778,11 +790,11 @@ function analyze(token, pgrmNum) {
             if (!entry.used) {
                 numWarns++;
                 if (entry.initialized) {
-                    Log.print(`Semantic_Warning: Variable '${entry.nameTok.symbol}' on ` +
+                    Log.SemMsg(`Variable '${entry.nameTok.symbol}' on ` +
                         `line: ${entry.nameTok.line} was initialized but never used`, LogPri.WARNING);
                 }
                 else {
-                    Log.print(`Semantic_Warning: Variable '${entry.nameTok.symbol}' was ` +
+                    Log.SemMsg(`Variable '${entry.nameTok.symbol}' was ` +
                         `declared on line: ${entry.nameTok.line} but never used`, LogPri.WARNING);
                 }
             }
@@ -793,13 +805,16 @@ function analyze(token, pgrmNum) {
         }
     }
     function analyzeBlock(parent, scope) {
+        Log.SemMsg("Adding new Block to AST...");
         let node = branchNode("BLOCK", parent);
+        Log.SemMsg("Creating new scope in SymbolTable...");
         let sTable = new SymbolTable(scope);
         discard(["{"]);
         analyzeStatements(node, sTable);
         discard(["}"]);
     }
     function analyzeStatements(parent, scope) {
+        Log.SemMsg("Analyzing Statement...");
         switch (token.name) {
             case "PRINT":
                 analyzePrint(parent, scope);
@@ -836,6 +851,7 @@ function analyze(token, pgrmNum) {
         analyzeStatements(parent, scope);
     }
     function analyzePrint(parent, scope) {
+        Log.SemMsg("Adding Print Statement to AST...");
         let node = branchNode("PRINT", parent);
         discard(["print", "("]);
         analyzeExpr(node, scope);
@@ -847,6 +863,7 @@ function analyze(token, pgrmNum) {
                 analyzeAddExpr(parent, scope);
                 break;
             case "QUOTE":
+                Log.SemMsg("Adding CharList to AST...");
                 discard(['"']);
                 let node = branchNode("CHARLIST", parent);
                 node.addChild(new TNode(token.symbol, token)); //CHARLIST
@@ -860,11 +877,12 @@ function analyze(token, pgrmNum) {
                 analyzeBoolExpr(parent, scope);
                 break;
             case "ID":
+                Log.SemMsg(`Scope-checking variable '${token.symbol}'...`);
                 //SymbolTable lookup
                 let symEntry = getSymEntry(token, scope);
                 if (!symEntry.initialized) {
                     numWarns++;
-                    Log.print(`Semantic_Warning: Utilizing unintialized variable ` +
+                    Log.SemMsg(`Utilizing unintialized variable ` +
                         `'${token.symbol}' at line: ${token.line} col: ${token.col}`, LogPri.WARNING);
                 }
                 symEntry.used = true;
@@ -879,6 +897,7 @@ function analyze(token, pgrmNum) {
     }
     function analyzeAddExpr(parent, scope) {
         if (token.next.symbol === "+") {
+            Log.SemMsg("Adding Addition Expr to AST...");
             //ADD Operation
             let node = new TNode(token.next.name, token.next);
             parent.addChild(node);
@@ -889,6 +908,7 @@ function analyze(token, pgrmNum) {
             if (token.name === "ID") {
                 //Type-Check
                 let symEntry = getSymEntry(token, scope);
+                Log.SemMsg(`Type-checking ${symEntry.typeTok.name} '${symEntry.nameTok.symobl}...'`);
                 let type = symEntry.typeTok.name;
                 if (type !== "INT") {
                     throw error(`Type Mismatch: Attempted to add [${type}] ` +
@@ -903,6 +923,7 @@ function analyze(token, pgrmNum) {
             analyzeExpr(node, scope);
         }
         else {
+            Log.SemMsg("Adding Digit to AST...");
             //Just a DIGIT
             parent.addChild(new TNode(token.symbol, token));
             token = token.next;
@@ -910,6 +931,7 @@ function analyze(token, pgrmNum) {
     }
     function analyzeBoolExpr(parent, scope) {
         if (token.symbol === "(") {
+            Log.SemMsg("Adding BoolExpr to AST...");
             //BooleanExpr
             let node = branchNode("BOOL_EXPR", parent);
             discard(["("]);
@@ -920,16 +942,20 @@ function analyze(token, pgrmNum) {
             discard([")"]);
         }
         else {
+            Log.SemMsg("Adding BoolVal to AST...");
             //BoolVal
             parent.addChild(new TNode(token.symbol, token));
             token = token.next;
         }
     }
     function analyzeAssign(parent, scope) {
+        Log.SemMsg("Adding Variable Assignment to AST...");
         //SymbolTable lookup
+        Log.SemMsg(`Scope-checking variable '${token.symbol}'...`);
         let symEntry = getSymEntry(token, scope);
         //Type-checking
         let type = symEntry.typeTok.name;
+        Log.SemMsg(`Type-checking ${type} '${token.symbol}' assignment...`);
         let value = token.next.next;
         switch (value.name) {
             case "DIGIT":
@@ -974,6 +1000,7 @@ function analyze(token, pgrmNum) {
         symEntry.initialized = true;
     }
     function analyzeVarDecl(parent, scope) {
+        Log.SemMsg("Adding Variable Declaration to AST...");
         let node = branchNode("VAR_DECL", parent);
         //TYPE
         node.addChild(new TNode(token.symbol, token));
@@ -983,13 +1010,16 @@ function analyze(token, pgrmNum) {
         node.addChild(new TNode(token.symbol, token));
         let name = token;
         token = token.next;
+        Log.SemMsg(`Scope-checking variable '${name.symbol}'...`);
         if (scope.table[name.symbol] !== undefined) {
             throw error(`Attempted to redeclare variable '${name.symbol}' at ` +
                 `line: ${name.line} col: ${name.col}`);
         }
+        Log.SemMsg(`Adding ${type.name} '${name.symbol}' to SymbolTable...`);
         scope.insert(name, type);
     }
     function analyzeWhileStatement(parent, scope) {
+        Log.SemMsg("Adding While Loop to AST...");
         let node = branchNode("WHILE", parent);
         discard(["while"]);
         analyzeBoolExpr(node, scope);
@@ -997,6 +1027,7 @@ function analyze(token, pgrmNum) {
         analyzeBlock(node, scope);
     }
     function analyzeIfStatement(parent, scope) {
+        Log.SemMsg("Adding If Statement to AST...");
         let node = branchNode("IF", parent);
         discard(["if"]);
         //Conditional
