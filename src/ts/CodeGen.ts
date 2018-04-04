@@ -1,5 +1,9 @@
 function genCode(AST: TNode, sTree: SymbolTable) {
-  let hexCode: string[] = [];
+  //Array of machine instructions in hexadecimal code
+  let byteCode: string[] = [];
+
+  let memTable = new MemoryTable();
+
   //Add an empty placeholder root for sTree (workaround for parseBlock)
   let tempRoot = new SymbolTable();
   tempRoot.addChild(sTree);
@@ -7,10 +11,13 @@ function genCode(AST: TNode, sTree: SymbolTable) {
   parseBlock(AST, tempRoot);
 
   //Add BRK to end of program for safety.
-  hexCode.push("00");
+  byteCode.push("00");
 
-  //Return completed machine code as string
-  return hexCode.join(" ");
+  //Calculate beta and adjust memTable locations accordingly
+  memTable.correct(byteCode.length);
+
+  //Backpatch and return byteCode as space-separated string
+  return memTable.backpatch(byteCode);
 
   function parseBlock(node: TNode, sTable: SymbolTable) {
     sTable = <SymbolTable>sTable.nextChild();
@@ -32,11 +39,17 @@ function genCode(AST: TNode, sTree: SymbolTable) {
     let child = <TNode>node.children[0];
     if (child.hasChildren()) {
       //Evaulate Expr
+      if (child.name === "ADD"){
+        let addr = parseAdd(child, sTable);
+        //Load Y register with result of ADD stored in addr
+        //Set X to 01, call SYS to print
+        byteCode.push("AC",addr[0],addr[1],"A2","01","FF");
+      }
     } else {
       switch (child.token.name) {
         case "DIGIT":
           //Load digit into Y register, set X to 01 and call SYS to print
-          hexCode.push("A0",`0${child.name}`,"A2","01","FF");
+          byteCode.push("A0",`0${child.name}`,"A2","01","FF");
           break;
         case "ID":
           //Print variable value
@@ -48,6 +61,33 @@ function genCode(AST: TNode, sTree: SymbolTable) {
           //Should not be called
       }
     }
+  }
 
+  function parseAdd(node: TNode, sTable: SymbolTable): [string, string] {
+    let firstDigit = node.children[0].name;
+    if (node.children[1].name === "ADD") {
+      //Perform addition first
+      let addr = parseAdd(<TNode>node.children[1], sTable);
+      //Load firstDigit to Acc, add contents of addr
+      byteCode.push("A9",`0${firstDigit}`,"6D",addr[0],addr[1]);
+      //Store result in memory (overwriting result of previous addition)
+      byteCode.push("8D",addr[0],addr[1]);
+      //Return address of result
+      return addr;
+    }
+    if (/[a-z]/.test(node.children[1].name)) {
+      //Second child is a variable
+      return null;
+    }
+    //Second child is a digit, add two digits
+    let addr = memTable.newLoc(); //Allocate storage for result
+    //Load firstDigit in Acc and store in memory
+    byteCode.push("A9",`0${firstDigit}`,"8D",addr[0],addr[1]);
+    //Load secondDigit in Acc and add firstDigit from memory
+    byteCode.push("A9",`0${node.children[1].name}`,"6D",addr[0],addr[1]);
+    //Store the result in memory
+    byteCode.push("8D",addr[0],addr[1]);
+    //Return address of result
+    return addr;
   }
 }

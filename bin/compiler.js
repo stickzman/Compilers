@@ -1,13 +1,17 @@
 function genCode(AST, sTree) {
-    let hexCode = [];
+    //Array of machine instructions in hexadecimal code
+    let byteCode = [];
+    let memTable = new MemoryTable();
     //Add an empty placeholder root for sTree (workaround for parseBlock)
     let tempRoot = new SymbolTable();
     tempRoot.addChild(sTree);
     parseBlock(AST, tempRoot);
     //Add BRK to end of program for safety.
-    hexCode.push("00");
-    //Return completed machine code as string
-    return hexCode.join(" ");
+    byteCode.push("00");
+    //Calculate beta and adjust memTable locations accordingly
+    memTable.correct(byteCode.length);
+    //Backpatch and return byteCode as space-separated string
+    return memTable.backpatch(byteCode);
     function parseBlock(node, sTable) {
         sTable = sTable.nextChild();
         for (let child of node.children) {
@@ -26,12 +30,18 @@ function genCode(AST, sTree) {
         let child = node.children[0];
         if (child.hasChildren()) {
             //Evaulate Expr
+            if (child.name === "ADD") {
+                let addr = parseAdd(child, sTable);
+                //Load Y register with result of ADD stored in addr
+                //Set X to 01, call SYS to print
+                byteCode.push("AC", addr[0], addr[1], "A2", "01", "FF");
+            }
         }
         else {
             switch (child.token.name) {
                 case "DIGIT":
                     //Load digit into Y register, set X to 01 and call SYS to print
-                    hexCode.push("A0", `0${child.name}`, "A2", "01", "FF");
+                    byteCode.push("A0", `0${child.name}`, "A2", "01", "FF");
                     break;
                 case "ID":
                     //Print variable value
@@ -42,6 +52,33 @@ function genCode(AST, sTree) {
                 default:
             }
         }
+    }
+    function parseAdd(node, sTable) {
+        let firstDigit = node.children[0].name;
+        if (node.children[1].name === "ADD") {
+            //Perform addition first
+            let addr = parseAdd(node.children[1], sTable);
+            //Load firstDigit to Acc, add contents of addr
+            byteCode.push("A9", `0${firstDigit}`, "6D", addr[0], addr[1]);
+            //Store result in memory (overwriting result of previous addition)
+            byteCode.push("8D", addr[0], addr[1]);
+            //Return address of result
+            return addr;
+        }
+        if (/[a-z]/.test(node.children[1].name)) {
+            //Second child is a variable
+            return null;
+        }
+        //Second child is a digit, add two digits
+        let addr = memTable.newLoc(); //Allocate storage for result
+        //Load firstDigit in Acc and store in memory
+        byteCode.push("A9", `0${firstDigit}`, "8D", addr[0], addr[1]);
+        //Load secondDigit in Acc and add firstDigit from memory
+        byteCode.push("A9", `0${node.children[1].name}`, "6D", addr[0], addr[1]);
+        //Store the result in memory
+        byteCode.push("8D", addr[0], addr[1]);
+        //Return address of result
+        return addr;
     }
 }
 function compile() {
@@ -179,6 +216,23 @@ function loadProgram(name) {
     }
     let source = document.getElementById("source");
     source.value = tests[name];
+}
+//Polyfill for padStart String function
+if (!String.prototype.padStart) {
+    String.prototype.padStart = function padStart(targetLength, padString) {
+        targetLength = targetLength >> 0; //truncate if number or convert non-number to 0;
+        padString = String((typeof padString !== 'undefined' ? padString : ' '));
+        if (this.length > targetLength) {
+            return String(this);
+        }
+        else {
+            targetLength = targetLength - this.length;
+            if (targetLength > padString.length) {
+                padString += padString.repeat(targetLength / padString.length); //append to original to ensure we are longer than needed
+            }
+            return padString.slice(0, targetLength) + String(this);
+        }
+    };
 }
 /// <reference path="Helper.ts"/>
 function lex(source, lineNum, charNum, pgrmNum) {
@@ -1290,6 +1344,49 @@ class Token {
         else {
             return this.name + ", " + this.value;
         }
+    }
+}
+/// <reference path="Helper.ts"/>
+class MemoryTable {
+    constructor() {
+        this.table = {};
+        this.offset = 0;
+        //Entries not true memory locations, only placeholders and offsets (in base 10)
+        this.dirty = true;
+    }
+    //Allocate new memory. Return name of placeholder addr as byte code array
+    newLoc(len = 1) {
+        if (this.offset > 256) {
+            throw new Error("Memory Overflow");
+        }
+        let memLoc = "T" + this.offset.toString().padStart(3, "0");
+        memLoc = memLoc.substr(0, 2) + " " + memLoc.substr(2);
+        this.table[memLoc] = this.offset;
+        this.offset += len;
+        return [memLoc.substr(0, 2), memLoc.substr(3)];
+    }
+    //Assuming beta and offsets are base 10
+    //Will convert to base 16/memory addresses in function
+    correct(beta) {
+        let keys = Object.keys(this.table);
+        let hex;
+        for (let key of keys) {
+            this.table[key] += beta;
+            hex = this.table[key].toString(16).padStart(4, "0");
+            //Swap the order of bytes to reflect the addressing scheme in 6502a
+            this.table[key] = hex.substr(2) + " " + hex.substr(0, 2);
+        }
+        this.dirty = false;
+    }
+    backpatch(byteArr) {
+        let code = byteArr.join(" ");
+        let keys = Object.keys(this.table);
+        let regExp;
+        for (let key of keys) {
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.table[key]);
+        }
+        return code;
     }
 }
 //# sourceMappingURL=compiler.js.map
