@@ -26,7 +26,7 @@ function compile() {
     let lineCount = 1;
     let colCount = 0;
     for (let i = 0; i < pgrms.length; i++) {
-        Log.breakLine();
+        Log.pgrmSeparater();
         Log.print("Lexing Program " + (i + 1) + "...");
         let results = lex(pgrms[i], lineCount, colCount, i + 1);
         let tokenLinkedList = results[0];
@@ -454,7 +454,7 @@ class Log {
         Log.print(str, priority);
     }
     static isClear() {
-        return Log.logElem.value.replace(/ /g, "") == "";
+        return Log.logElem.value.replace(/[ \n]/g, "") == "";
     }
     static isLastLineClear() {
         let testStr = Log.logElem.value.replace(/ /g, "");
@@ -472,6 +472,11 @@ class Log {
     }
     static dottedLine(pri) {
         Log.print("-------------------------------------", pri);
+    }
+    static pgrmSeparater() {
+        if (!Log.isClear()) {
+            Log.print("***********************", LogPri.ERROR);
+        }
     }
 }
 Log.level = LogPri.VERBOSE;

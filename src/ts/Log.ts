@@ -82,7 +82,7 @@ class Log {
   }
 
   public static isClear(): boolean {
-    return Log.logElem.value.replace(/ /g, "") == "";
+    return Log.logElem.value.replace(/[ \n]/g, "") == "";
   }
 
   public static isLastLineClear(): boolean {
@@ -101,6 +101,12 @@ class Log {
 
   public static dottedLine(pri: LogPri) {
     Log.print("-------------------------------------", pri);
+  }
+
+  public static pgrmSeparater() {
+    if (!Log.isClear()) {
+      Log.print("***********************", LogPri.ERROR);
+    }
   }
 
 }
