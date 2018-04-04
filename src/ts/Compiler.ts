@@ -2,7 +2,9 @@ function compile() {
   //Get source code
   let source = (<HTMLInputElement>document.getElementById("source")).value;
   let hexDiv = document.getElementById("hexDiv");
+  hexDiv.style.display = "none";
   let hexDisplay = <HTMLInputElement>document.getElementById("hexCode");
+  hexDisplay.value = "";
 
   Log.clear();
 
@@ -46,7 +48,7 @@ function compile() {
     if (res === null) {continue;}
     let code = genCode(res[0], res[1]);
     hexDiv.style.display = "block";
-    hexDisplay.value = code;
+    hexDisplay.value += code + " ";
   }
 
 }

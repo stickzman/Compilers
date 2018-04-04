@@ -86,7 +86,9 @@ function compile() {
     //Get source code
     let source = document.getElementById("source").value;
     let hexDiv = document.getElementById("hexDiv");
+    hexDiv.style.display = "none";
     let hexDisplay = document.getElementById("hexCode");
+    hexDisplay.value = "";
     Log.clear();
     //Split source code of programs
     let pgrms = source.split("$");
@@ -135,7 +137,7 @@ function compile() {
         }
         let code = genCode(res[0], res[1]);
         hexDiv.style.display = "block";
-        hexDisplay.value = code;
+        hexDisplay.value += code + " ";
     }
 }
 //All test cases names and source code to be displayed in console panel
@@ -595,6 +597,49 @@ class Log {
     }
 }
 Log.level = LogPri.VERBOSE;
+/// <reference path="Helper.ts"/>
+class MemoryTable {
+    constructor() {
+        this.table = {};
+        this.offset = 0;
+        //Entries not true memory locations, only placeholders and offsets (in base 10)
+        this.dirty = true;
+    }
+    //Allocate new memory. Return name of placeholder addr as byte code array
+    newLoc(len = 1) {
+        if (this.offset > 256) {
+            throw new Error("Memory Overflow");
+        }
+        let memLoc = "T" + this.offset.toString().padStart(3, "0");
+        memLoc = memLoc.substr(0, 2) + " " + memLoc.substr(2);
+        this.table[memLoc] = this.offset;
+        this.offset += len;
+        return [memLoc.substr(0, 2), memLoc.substr(3)];
+    }
+    //Assuming beta and offsets are base 10
+    //Will convert to base 16/memory addresses in function
+    correct(beta) {
+        let keys = Object.keys(this.table);
+        let hex;
+        for (let key of keys) {
+            this.table[key] += beta;
+            hex = this.table[key].toString(16).padStart(4, "0");
+            //Swap the order of bytes to reflect the addressing scheme in 6502a
+            this.table[key] = hex.substr(2) + " " + hex.substr(0, 2);
+        }
+        this.dirty = false;
+    }
+    backpatch(byteArr) {
+        let code = byteArr.join(" ");
+        let keys = Object.keys(this.table);
+        let regExp;
+        for (let key of keys) {
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.table[key]);
+        }
+        return code;
+    }
+}
 function parse(token, pgrmNum) {
     let numWarns = 0;
     //Initial parsing of Program
@@ -1348,49 +1393,6 @@ class Token {
         else {
             return this.name + ", " + this.value;
         }
-    }
-}
-/// <reference path="Helper.ts"/>
-class MemoryTable {
-    constructor() {
-        this.table = {};
-        this.offset = 0;
-        //Entries not true memory locations, only placeholders and offsets (in base 10)
-        this.dirty = true;
-    }
-    //Allocate new memory. Return name of placeholder addr as byte code array
-    newLoc(len = 1) {
-        if (this.offset > 256) {
-            throw new Error("Memory Overflow");
-        }
-        let memLoc = "T" + this.offset.toString().padStart(3, "0");
-        memLoc = memLoc.substr(0, 2) + " " + memLoc.substr(2);
-        this.table[memLoc] = this.offset;
-        this.offset += len;
-        return [memLoc.substr(0, 2), memLoc.substr(3)];
-    }
-    //Assuming beta and offsets are base 10
-    //Will convert to base 16/memory addresses in function
-    correct(beta) {
-        let keys = Object.keys(this.table);
-        let hex;
-        for (let key of keys) {
-            this.table[key] += beta;
-            hex = this.table[key].toString(16).padStart(4, "0");
-            //Swap the order of bytes to reflect the addressing scheme in 6502a
-            this.table[key] = hex.substr(2) + " " + hex.substr(0, 2);
-        }
-        this.dirty = false;
-    }
-    backpatch(byteArr) {
-        let code = byteArr.join(" ");
-        let keys = Object.keys(this.table);
-        let regExp;
-        for (let key of keys) {
-            regExp = new RegExp(key, 'g');
-            code = code.replace(regExp, this.table[key]);
-        }
-        return code;
     }
 }
 //# sourceMappingURL=compiler.js.map
