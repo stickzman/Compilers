@@ -13,6 +13,7 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     sRoot = <SymbolTable>sRoot.children[0];
     sRoot.parent = null;
 
+    Log.breakLine();
     Log.SemMsg("Checking for unused variables...");
     checkUnusedVars(sRoot);
 
@@ -148,9 +149,11 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
         let symEntry = getSymEntry(token, scope);
         if (!symEntry.initialized) {
           numWarns++;
+          Log.breakLine();
           Log.SemMsg(`Utilizing unintialized variable `+
                     `'${token.symbol}' at line: ${token.line} col: ${token.col}`,
                     LogPri.WARNING);
+          Log.breakLine();
         }
         symEntry.used = true;
         parent.addChild(new TNode(token.symbol, token));

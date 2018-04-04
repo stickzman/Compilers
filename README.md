@@ -1,5 +1,7 @@
 # Daniel Ahl's Repository for Design of Compilers
 
+**All code to be graded is found under the master branch**
+
 The language I have chosen to write my compiler in is Typescript.
 
 Typescript can be downloaded from https://www.typescriptlang.org/#download-links

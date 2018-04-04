@@ -456,7 +456,7 @@ class Log {
     static SemMsg(msg, priority = LogPri.VERBOSE) {
         let str = "";
         if (priority == LogPri.WARNING) {
-            str += "Semantic_Warning: ";
+            str += "SEMANTIC_WARNING: ";
         }
         else {
             str += "ANALYZER: ";
@@ -755,6 +755,7 @@ function analyze(token, pgrmNum) {
         root.parent = null;
         sRoot = sRoot.children[0];
         sRoot.parent = null;
+        Log.breakLine();
         Log.SemMsg("Checking for unused variables...");
         checkUnusedVars(sRoot);
         Log.breakLine();
@@ -882,8 +883,10 @@ function analyze(token, pgrmNum) {
                 let symEntry = getSymEntry(token, scope);
                 if (!symEntry.initialized) {
                     numWarns++;
+                    Log.breakLine();
                     Log.SemMsg(`Utilizing unintialized variable ` +
                         `'${token.symbol}' at line: ${token.line} col: ${token.col}`, LogPri.WARNING);
+                    Log.breakLine();
                 }
                 symEntry.used = true;
                 parent.addChild(new TNode(token.symbol, token));

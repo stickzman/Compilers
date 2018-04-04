@@ -84,7 +84,7 @@ class Log {
   public static SemMsg(msg: string, priority: LogPri = LogPri.VERBOSE) {
     let str = "";
     if (priority == LogPri.WARNING) {
-      str += "Semantic_Warning: ";
+      str += "SEMANTIC_WARNING: ";
     } else {
       str += "ANALYZER: ";
     }
