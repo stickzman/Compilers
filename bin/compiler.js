@@ -66,6 +66,7 @@ function genCode(AST, sTree) {
             return addr;
         }
         if (/[a-z]/.test(node.children[1].name)) {
+            //TODO: Handle variables in addition
             //Second child is a variable
             return null;
         }
@@ -84,6 +85,8 @@ function genCode(AST, sTree) {
 function compile() {
     //Get source code
     let source = document.getElementById("source").value;
+    let hexDiv = document.getElementById("hexDiv");
+    let hexDisplay = document.getElementById("hexCode");
     Log.clear();
     //Split source code of programs
     let pgrms = source.split("$");
@@ -131,7 +134,8 @@ function compile() {
             continue;
         }
         let code = genCode(res[0], res[1]);
-        console.log(code);
+        hexDiv.style.display = "block";
+        hexDisplay.value = code;
     }
 }
 //All test cases names and source code to be displayed in console panel

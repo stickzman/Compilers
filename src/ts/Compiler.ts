@@ -1,6 +1,8 @@
 function compile() {
   //Get source code
   let source = (<HTMLInputElement>document.getElementById("source")).value;
+  let hexDiv = document.getElementById("hexDiv");
+  let hexDisplay = <HTMLInputElement>document.getElementById("hexCode");
 
   Log.clear();
 
@@ -43,7 +45,8 @@ function compile() {
     let res = analyze(tokenLinkedList, i+1);
     if (res === null) {continue;}
     let code = genCode(res[0], res[1]);
-    console.log(code);
+    hexDiv.style.display = "block";
+    hexDisplay.value = code;
   }
 
 }

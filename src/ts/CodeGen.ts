@@ -76,6 +76,7 @@ function genCode(AST: TNode, sTree: SymbolTable) {
       return addr;
     }
     if (/[a-z]/.test(node.children[1].name)) {
+      //TODO: Handle variables in addition
       //Second child is a variable
       return null;
     }
