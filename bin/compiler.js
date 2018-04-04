@@ -1,17 +1,11 @@
-function genCode(AST, sTree) {
+function genCode(AST, sTree, memTable) {
     //Array of machine instructions in hexadecimal code
     let byteCode = [];
-    let memTable = new MemoryTable();
     //Add an empty placeholder root for sTree (workaround for parseBlock)
     let tempRoot = new SymbolTable();
     tempRoot.addChild(sTree);
     parseBlock(AST, tempRoot);
-    //Add BRK to end of program for safety.
-    byteCode.push("00");
-    //Calculate beta and adjust memTable locations accordingly
-    memTable.correct(byteCode.length);
-    //Backpatch and return byteCode as space-separated string
-    return memTable.backpatch(byteCode);
+    return byteCode;
     function parseBlock(node, sTable) {
         sTable = sTable.nextChild();
         for (let child of node.children) {
@@ -113,13 +107,15 @@ function compile() {
     }
     let lineCount = 1;
     let colCount = 0;
+    let memTable = new MemoryTable();
+    let byteCode = [];
     for (let i = 0; i < pgrms.length; i++) {
         Log.pgrmSeparater();
         Log.print("Lexing Program " + (i + 1) + "...");
-        let results = lex(pgrms[i], lineCount, colCount, i + 1);
-        let tokenLinkedList = results[0];
-        lineCount = results[1];
-        colCount = results[2];
+        let lexRes = lex(pgrms[i], lineCount, colCount, i + 1);
+        let tokenLinkedList = lexRes[0];
+        lineCount = lexRes[1];
+        colCount = lexRes[2];
         if (tokenLinkedList === null) {
             continue;
         }
@@ -131,14 +127,22 @@ function compile() {
         }
         Log.breakLine();
         Log.print("Analyzing Program " + (i + 1) + "...");
-        let res = analyze(tokenLinkedList, i + 1);
-        if (res === null) {
+        let semRes = analyze(tokenLinkedList, i + 1);
+        if (semRes === null) {
             continue;
         }
-        let code = genCode(res[0], res[1]);
-        hexDiv.style.display = "block";
-        hexDisplay.value += code + " ";
+        let codeArr = genCode(semRes[0], semRes[1], memTable);
+        byteCode = byteCode.concat(codeArr);
     }
+    if (byteCode.length === 0) {
+        return;
+    }
+    //Perform backpatching and display machine code
+    byteCode.push("00");
+    memTable.correct(byteCode.length);
+    let code = memTable.backpatch(byteCode);
+    hexDisplay.value = code.padEnd(512, " 00");
+    hexDiv.style.display = "block";
 }
 //All test cases names and source code to be displayed in console panel
 let tests = {
@@ -597,49 +601,6 @@ class Log {
     }
 }
 Log.level = LogPri.VERBOSE;
-/// <reference path="Helper.ts"/>
-class MemoryTable {
-    constructor() {
-        this.table = {};
-        this.offset = 0;
-        //Entries not true memory locations, only placeholders and offsets (in base 10)
-        this.dirty = true;
-    }
-    //Allocate new memory. Return name of placeholder addr as byte code array
-    newLoc(len = 1) {
-        if (this.offset > 256) {
-            throw new Error("Memory Overflow");
-        }
-        let memLoc = "T" + this.offset.toString().padStart(3, "0");
-        memLoc = memLoc.substr(0, 2) + " " + memLoc.substr(2);
-        this.table[memLoc] = this.offset;
-        this.offset += len;
-        return [memLoc.substr(0, 2), memLoc.substr(3)];
-    }
-    //Assuming beta and offsets are base 10
-    //Will convert to base 16/memory addresses in function
-    correct(beta) {
-        let keys = Object.keys(this.table);
-        let hex;
-        for (let key of keys) {
-            this.table[key] += beta;
-            hex = this.table[key].toString(16).padStart(4, "0");
-            //Swap the order of bytes to reflect the addressing scheme in 6502a
-            this.table[key] = hex.substr(2) + " " + hex.substr(0, 2);
-        }
-        this.dirty = false;
-    }
-    backpatch(byteArr) {
-        let code = byteArr.join(" ");
-        let keys = Object.keys(this.table);
-        let regExp;
-        for (let key of keys) {
-            regExp = new RegExp(key, 'g');
-            code = code.replace(regExp, this.table[key]);
-        }
-        return code;
-    }
-}
 function parse(token, pgrmNum) {
     let numWarns = 0;
     //Initial parsing of Program
@@ -1393,6 +1354,49 @@ class Token {
         else {
             return this.name + ", " + this.value;
         }
+    }
+}
+/// <reference path="Helper.ts"/>
+class MemoryTable {
+    constructor() {
+        this.table = {};
+        this.offset = 0;
+        //Entries not true memory locations, only placeholders and offsets (in base 10)
+        this.dirty = true;
+    }
+    //Allocate new memory. Return name of placeholder addr as byte code array
+    newLoc(len = 1) {
+        if (this.offset > 256) {
+            throw new Error("Memory Overflow");
+        }
+        let memLoc = "T" + this.offset.toString().padStart(3, "0");
+        memLoc = memLoc.substr(0, 2) + " " + memLoc.substr(2);
+        this.table[memLoc] = this.offset;
+        this.offset += len;
+        return [memLoc.substr(0, 2), memLoc.substr(3)];
+    }
+    //Assuming beta and offsets are base 10
+    //Will convert to base 16/memory addresses in function
+    correct(beta) {
+        let keys = Object.keys(this.table);
+        let hex;
+        for (let key of keys) {
+            this.table[key] += beta;
+            hex = this.table[key].toString(16).padStart(4, "0");
+            //Swap the order of bytes to reflect the addressing scheme in 6502a
+            this.table[key] = hex.substr(2) + " " + hex.substr(0, 2);
+        }
+        this.dirty = false;
+    }
+    backpatch(byteArr) {
+        let code = byteArr.join(" ");
+        let keys = Object.keys(this.table);
+        let regExp;
+        for (let key of keys) {
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.table[key]);
+        }
+        return code;
     }
 }
 //# sourceMappingURL=compiler.js.map

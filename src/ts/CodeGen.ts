@@ -1,8 +1,6 @@
-function genCode(AST: TNode, sTree: SymbolTable) {
+function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[] {
   //Array of machine instructions in hexadecimal code
   let byteCode: string[] = [];
-
-  let memTable = new MemoryTable();
 
   //Add an empty placeholder root for sTree (workaround for parseBlock)
   let tempRoot = new SymbolTable();
@@ -10,14 +8,7 @@ function genCode(AST: TNode, sTree: SymbolTable) {
 
   parseBlock(AST, tempRoot);
 
-  //Add BRK to end of program for safety.
-  byteCode.push("00");
-
-  //Calculate beta and adjust memTable locations accordingly
-  memTable.correct(byteCode.length);
-
-  //Backpatch and return byteCode as space-separated string
-  return memTable.backpatch(byteCode);
+  return byteCode;
 
   function parseBlock(node: TNode, sTable: SymbolTable) {
     sTable = <SymbolTable>sTable.nextChild();
