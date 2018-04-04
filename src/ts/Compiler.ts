@@ -42,7 +42,8 @@ function compile() {
     Log.print("Analyzing Program " + (i+1) + "...");
     let res = analyze(tokenLinkedList, i+1);
     if (res === null) {continue;}
-    genCode(res[0], res[1]);
+    let code = genCode(res[0], res[1]);
+    console.log(code);
   }
 
 }
