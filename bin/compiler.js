@@ -1,3 +1,16 @@
+function genCode(AST, sTree) {
+    function parseBlock(node, sTable) {
+        sTable = sTable.nextChild();
+        for (let child of node.children) {
+            switch (child.name) {
+                case "BLOCK":
+                    parseBlock(child, sTable);
+                    break;
+                default:
+            }
+        }
+    }
+}
 function compile() {
     //Get source code
     let source = document.getElementById("source").value;
@@ -47,8 +60,7 @@ function compile() {
         if (res === null) {
             continue;
         }
-        let AST = res[0];
-        let sTree = res[1];
+        genCode(res[0], res[1]);
     }
 }
 //All test cases names and source code to be displayed in console panel
@@ -1079,6 +1091,7 @@ class BaseNode {
         this.name = name;
         this.children = [];
         this.parent = null;
+        this.siblingIndex = -1;
     }
     addChild(node) {
         this.children.push(node);
@@ -1089,6 +1102,17 @@ class BaseNode {
     }
     hasChildren() {
         return this.children.length > 0;
+    }
+    nextChild() {
+        if (this.hasChildren()) {
+            this.siblingIndex++;
+            if (this.siblingIndex < this.children.length) {
+                return this.children[this.siblingIndex];
+            }
+            else {
+                this.siblingIndex = -1;
+            }
+        }
     }
     getSiblings() {
         return this.parent.children;

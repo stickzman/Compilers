@@ -42,8 +42,7 @@ function compile() {
     Log.print("Analyzing Program " + (i+1) + "...");
     let res = analyze(tokenLinkedList, i+1);
     if (res === null) {continue;}
-    let AST = res[0];
-    let sTree = res[1];
+    genCode(res[0], res[1]);
   }
 
 }
