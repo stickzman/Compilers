@@ -82,7 +82,7 @@ class MemoryTable {
   }
 
   private error() {
-    let e = new Error("ERROR: Program exceeds 256 bytes!");
+    let e = new Error("Program exceeds 256 bytes!");
     e.name = "Pgrm_Overflow";
     return e;
   }

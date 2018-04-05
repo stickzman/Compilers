@@ -4,8 +4,19 @@ function genCode(AST, sTree, memTable) {
     //Add an empty placeholder root for sTree (workaround for parseBlock)
     let tempRoot = new SymbolTable();
     tempRoot.addChild(sTree);
-    parseBlock(AST, tempRoot);
-    return byteCode;
+    try {
+        parseBlock(AST, tempRoot);
+        return byteCode;
+    }
+    catch (e) {
+        if (e.name === "Compilation_Error" || e.name === "Pgrm_Overflow") {
+            Log.print(e, LogPri.ERROR);
+            return [];
+        }
+        else {
+            throw e;
+        }
+    }
     function parseBlock(node, sTable) {
         sTable = sTable.nextChild();
         for (let child of node.children) {
@@ -105,32 +116,49 @@ function genCode(AST, sTree, memTable) {
         }
     }
     function parseAdd(node, sTable) {
-        let firstDigit = node.children[0].name;
-        if (node.children[1].name === "ADD") {
-            //Perform addition first
-            let addr = parseAdd(node.children[1], sTable);
-            //Load firstDigit to Acc, add contents of addr
-            byteCode.push("A9", `0${firstDigit}`, "6D", addr[0], addr[1]);
-            //Store result in memory (overwriting result of previous addition)
-            byteCode.push("8D", addr[0], addr[1]);
-            //Return address of result
+        let results = optimizeAdd(0, node);
+        if (results[0] > 256) {
+            throw error("Integer Overflow: result of calculation exceeds maximum " +
+                "storage for integer (1 byte)");
+        }
+        if (/[a-z]/.test(results[1])) {
+            //The last element is an ID
+            let varLoc = sTable.getLocation(results[1]);
+            let resLoc = memTable.allocateStatic();
+            //Load accumulated num into Acc, then add value stored in the variable
+            byteCode.push("A9", results[0].toString(16), "6D", varLoc[0], varLoc[1]);
+            //Store the result in memory, return the location
+            byteCode.push("8D", resLoc[0], resLoc[1]);
+            return resLoc;
+        }
+        else {
+            //The last element is a digit wrapped in a string
+            let num = results[0] + parseInt(results[1]);
+            if (num > 256) {
+                throw error("Integer Overflow: result of calculation exceeds maximum " +
+                    "storage for integer (1 byte)");
+            }
+            let addr = memTable.allocateStatic();
+            //Load the result into Acc, store in memory, return the location
+            byteCode.push("A9", num.toString(16), "8D", addr[0], addr[1]);
             return addr;
         }
-        if (/[a-z]/.test(node.children[1].name)) {
-            //TODO: Handle variables in addition
-            //Second child is a variable
-            return null;
+        //Recursive helper func traverses ADD subtrees, returns rightmost child and
+        //the summation of all other children
+        function optimizeAdd(acc, addNode) {
+            let num = parseInt(addNode.children[0].name);
+            if (addNode.children[1].name === "ADD") {
+                return optimizeAdd(acc + num, addNode.children[1]);
+            }
+            else {
+                return [acc + num, addNode.children[1].name];
+            }
         }
-        //Second child is a digit, add two digits
-        let addr = memTable.allocateStatic(); //Allocate storage for result
-        //Load firstDigit in Acc and store in memory
-        byteCode.push("A9", `0${firstDigit}`, "8D", addr[0], addr[1]);
-        //Load secondDigit in Acc and add firstDigit from memory
-        byteCode.push("A9", `0${node.children[1].name}`, "6D", addr[0], addr[1]);
-        //Store the result in memory
-        byteCode.push("8D", addr[0], addr[1]);
-        //Return address of result
-        return addr;
+    }
+    function error(msg) {
+        let e = new Error(msg);
+        e.name = "Compilation_Error";
+        return e;
     }
 }
 function compile() {
@@ -737,7 +765,7 @@ class MemoryTable {
         return code;
     }
     error() {
-        let e = new Error("ERROR: Program exceeds 256 bytes!");
+        let e = new Error("Program exceeds 256 bytes!");
         e.name = "Pgrm_Overflow";
         return e;
     }
