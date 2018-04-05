@@ -36,11 +36,15 @@ function genCode(AST, sTree, memTable) {
     }
     function parseExpr(node, sTable) {
         let child = node.children[0];
-        switch (child.name) {
-            case "ADD":
-                return parseAdd(child, sTable);
-            case "CHARLIST":
-                return parseCharList(child);
+        if (child.name === "ADD") {
+            return parseAdd(child, sTable);
+        }
+        if (child.name === "CHARLIST") {
+            return parseCharList(child);
+        }
+        if (/[a-z]/.test(child.name)) {
+            //It's an ID
+            return sTable.getLocation(child.name);
         }
         return null;
     }
@@ -81,6 +85,19 @@ function genCode(AST, sTree, memTable) {
                     break;
                 case "ID":
                     //Print variable value
+                    let addr = sTable.getLocation(child.name);
+                    switch (sTable.getType(child.name)) {
+                        case "STRING":
+                            //Load addr into Y register, set X to 02 and call SYS to print
+                            byteCode.push("AC", addr[0], addr[1], "A2", "02", "FF");
+                            break;
+                        case "INT":
+                            //Load digit into Y register, set X to 01 and call SYS to print
+                            byteCode.push("AC", addr[0], addr[1], "A2", "01", "FF");
+                            break;
+                        case "BOOLEAN":
+                            break;
+                    }
                     break;
                 case "BOOLVAL":
                     //Print true/false
@@ -1401,6 +1418,12 @@ class SymbolTable extends BaseNode {
     }
     setLocation(varName, loc) {
         this.table[varName].memLoc = loc;
+    }
+    getLocation(varName) {
+        return this.table[varName].memLoc;
+    }
+    getType(varName) {
+        return this.table[varName].typeTok.name;
     }
     lookup(name) {
         let node = this;
