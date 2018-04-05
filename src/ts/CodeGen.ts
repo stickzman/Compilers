@@ -17,6 +17,12 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
         case "BLOCK":
           parseBlock(child, sTable);
           break;
+        case "VAR_DECL":
+          parseDecl(child, sTable);
+          break;
+        case "ASSIGN":
+          parseAssign(child, sTable);
+          break;
         case "PRINT":
           parsePrint(child, sTable);
           break;
@@ -24,6 +30,25 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
           //Should not be called
       }
     }
+  }
+
+  function parseDecl(node: TNode, sTable: SymbolTable) {
+    let addr = memTable.allocateStatic();
+    sTable.setLocation(node.children[1].name, addr);
+    //Initialize to 0/false/empty string
+    byteCode.push("A9","00","8D",addr[0],addr[1]);
+  }
+
+  function parseAssign(node: TNode, sTable: SymbolTable) {
+
+  }
+
+  function parseExpr(node: TNode, sTable: SymbolTable): string[] {
+    switch(node.children[0].name) {
+      case "ADD":
+        return parseAdd(node.children[0], sTable);
+    }
+    return null;
   }
 
   function parsePrint(node: TNode, sTable: SymbolTable) {
@@ -54,7 +79,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
     }
   }
 
-  function parseAdd(node: TNode, sTable: SymbolTable): [string, string] {
+  function parseAdd(node: TNode, sTable: SymbolTable): string[] {
     let firstDigit = node.children[0].name;
     if (node.children[1].name === "ADD") {
       //Perform addition first
@@ -72,7 +97,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
       return null;
     }
     //Second child is a digit, add two digits
-    let addr = memTable.newLoc(); //Allocate storage for result
+    let addr = memTable.allocateStatic(); //Allocate storage for result
     //Load firstDigit in Acc and store in memory
     byteCode.push("A9",`0${firstDigit}`,"8D",addr[0],addr[1]);
     //Load secondDigit in Acc and add firstDigit from memory

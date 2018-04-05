@@ -13,12 +13,33 @@ function genCode(AST, sTree, memTable) {
                 case "BLOCK":
                     parseBlock(child, sTable);
                     break;
+                case "VAR_DECL":
+                    parseDecl(child, sTable);
+                    break;
+                case "ASSIGN":
+                    parseAssign(child, sTable);
+                    break;
                 case "PRINT":
                     parsePrint(child, sTable);
                     break;
                 default:
             }
         }
+    }
+    function parseDecl(node, sTable) {
+        let addr = memTable.allocateStatic();
+        sTable.setLocation(node.children[1].name, addr);
+        //Initialize to 0/false/empty string
+        byteCode.push("A9", "00", "8D", addr[0], addr[1]);
+    }
+    function parseAssign(node, sTable) {
+    }
+    function parseExpr(node, sTable) {
+        switch (node.children[0].name) {
+            case "ADD":
+                return parseAdd(node.children[0], sTable);
+        }
+        return null;
     }
     function parsePrint(node, sTable) {
         let child = node.children[0];
@@ -65,7 +86,7 @@ function genCode(AST, sTree, memTable) {
             return null;
         }
         //Second child is a digit, add two digits
-        let addr = memTable.newLoc(); //Allocate storage for result
+        let addr = memTable.allocateStatic(); //Allocate storage for result
         //Load firstDigit in Acc and store in memory
         byteCode.push("A9", `0${firstDigit}`, "8D", addr[0], addr[1]);
         //Load secondDigit in Acc and add firstDigit from memory
@@ -131,6 +152,8 @@ function compile() {
         if (semRes === null) {
             continue;
         }
+        Log.breakLine();
+        Log.print("Compiling Program " + (i + 1) + "...");
         let codeArr = genCode(semRes[0], semRes[1], memTable);
         byteCode = byteCode.concat(codeArr);
     }
@@ -601,6 +624,88 @@ class Log {
     }
 }
 Log.level = LogPri.VERBOSE;
+/// <reference path="Helper.ts"/>
+class MemoryTable {
+    constructor() {
+        this.heap = {};
+        this.staticTable = {};
+        this.staticLength = 0;
+        this.heapLength = 0;
+    }
+    //Allocate new static memory. Return name of placeholder addr
+    allocateStatic() {
+        //Create placeholder address
+        let addr = "S" + this.staticLength.toString().padStart(3, "0");
+        this.staticLength++;
+        addr = addr.substr(0, 2) + " " + addr.substr(2);
+        this.staticTable[addr] = "";
+        return addr.split(" ");
+    }
+    //Allocate new heap memory. Return name of placeholder addr
+    allocateHeap(hexData) {
+        let addr = "H" + this.heapLength++; //Create placeholder address
+        this.heap[addr] = { data: hexData, loc: "" };
+        return addr;
+    }
+    //Assuming beta and offsets are base 10
+    //Will convert to base 16/memory addresses in function
+    correct(alpha) {
+        let keys = Object.keys(this.staticTable);
+        let beta = alpha + keys.length;
+        if (beta > 256) {
+            throw this.error();
+        }
+        //Convert memory locations of static table
+        let hex;
+        for (let i = 0; i < keys.length; i++) {
+            hex = (alpha + i).toString(16).padStart(4, "0");
+            //Swap the order of bytes to reflect the addressing scheme in 6502a
+            this.staticTable[keys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
+        }
+        //Convert memory locations of heap
+        keys = Object.keys(this.heap);
+        let offset = 0;
+        for (let key of keys) {
+            this.staticTable[key].loc = (beta + offset).toString(16).padStart(2, "0");
+            offset += this.staticTable.data.split(" ").length;
+        }
+        if (beta + offset > 256) {
+            throw this.error();
+        }
+    }
+    backpatch(byteArr) {
+        //Pad byteArr with zeros for static locations
+        let staticKeys = Object.keys(this.staticTable);
+        for (let key of staticKeys) {
+            byteArr.push("00");
+        }
+        //Add heap data to end of byteArr
+        let heapKeys = Object.keys(this.heap);
+        for (let key of heapKeys) {
+            byteArr = byteArr.concat(this.heap[key].data.split(" "));
+        }
+        let code = byteArr.join(" ");
+        //Backpatch static locations
+        let regExp;
+        for (let key of staticKeys) {
+            Log.print(`Backpatching '${key}' to '${this.staticTable[key]}'...`);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.staticTable[key]);
+        }
+        //Backpatch static locations
+        for (let key of heapKeys) {
+            Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.heap[key].loc);
+        }
+        return code;
+    }
+    error() {
+        let e = new Error("ERROR: Program exceeds 256 bytes!");
+        e.name = "Pgrm_Overflow";
+        return e;
+    }
+}
 function parse(token, pgrmNum) {
     let numWarns = 0;
     //Initial parsing of Program
@@ -1273,6 +1378,9 @@ class SymbolTable extends BaseNode {
         this.table[nameTok.symbol] = { nameTok: nameTok, typeTok: typeTok,
             initialized: false, used: false };
     }
+    setLocation(varName, loc) {
+        this.table[varName].memLoc = loc;
+    }
     lookup(name) {
         let node = this;
         let entry;
@@ -1354,49 +1462,6 @@ class Token {
         else {
             return this.name + ", " + this.value;
         }
-    }
-}
-/// <reference path="Helper.ts"/>
-class MemoryTable {
-    constructor() {
-        this.table = {};
-        this.offset = 0;
-        //Entries not true memory locations, only placeholders and offsets (in base 10)
-        this.dirty = true;
-    }
-    //Allocate new memory. Return name of placeholder addr as byte code array
-    newLoc(len = 1) {
-        if (this.offset > 256) {
-            throw new Error("Memory Overflow");
-        }
-        let memLoc = "T" + this.offset.toString().padStart(3, "0");
-        memLoc = memLoc.substr(0, 2) + " " + memLoc.substr(2);
-        this.table[memLoc] = this.offset;
-        this.offset += len;
-        return [memLoc.substr(0, 2), memLoc.substr(3)];
-    }
-    //Assuming beta and offsets are base 10
-    //Will convert to base 16/memory addresses in function
-    correct(beta) {
-        let keys = Object.keys(this.table);
-        let hex;
-        for (let key of keys) {
-            this.table[key] += beta;
-            hex = this.table[key].toString(16).padStart(4, "0");
-            //Swap the order of bytes to reflect the addressing scheme in 6502a
-            this.table[key] = hex.substr(2) + " " + hex.substr(0, 2);
-        }
-        this.dirty = false;
-    }
-    backpatch(byteArr) {
-        let code = byteArr.join(" ");
-        let keys = Object.keys(this.table);
-        let regExp;
-        for (let key of keys) {
-            regExp = new RegExp(key, 'g');
-            code = code.replace(regExp, this.table[key]);
-        }
-        return code;
     }
 }
 //# sourceMappingURL=compiler.js.map

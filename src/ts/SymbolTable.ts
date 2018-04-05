@@ -15,6 +15,10 @@ class SymbolTable extends BaseNode {
                                   initialized:false, used:false};
   }
 
+  public setLocation(varName: string, loc: string[]) {
+    this.table[varName].memLoc = loc;
+  }
+
   public lookup(name: string) {
     let node: SymbolTable = this;
     let entry;

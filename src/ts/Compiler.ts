@@ -48,6 +48,8 @@ function compile() {
     Log.print("Analyzing Program " + (i+1) + "...");
     let semRes = analyze(tokenLinkedList, i+1);
     if (semRes === null) {continue;}
+    Log.breakLine();
+    Log.print("Compiling Program " + (i+1) + "...");
     let codeArr = genCode(semRes[0], semRes[1], memTable);
     byteCode = byteCode.concat(codeArr);
   }
