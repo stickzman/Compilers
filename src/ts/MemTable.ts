@@ -45,8 +45,8 @@ class MemoryTable {
     keys = Object.keys(this.heap);
     let offset = 0;
     for (let key of keys) {
-      this.staticTable[key].loc = (beta + offset).toString(16).padStart(2, "0");
-      offset += this.staticTable.data.split(" ").length;
+      this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0");
+      offset += this.heap[key].data.split(" ").length;
     }
     if (beta + offset > 256) {
       throw this.error();

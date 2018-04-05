@@ -43,12 +43,28 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
 
   }
 
-  function parseExpr(node: TNode, sTable: SymbolTable): string[] {
-    switch(node.children[0].name) {
+  function parseExpr(node: TNode, sTable: SymbolTable) {
+    let child = node.children[0];
+    switch(child.name) {
       case "ADD":
-        return parseAdd(node.children[0], sTable);
+        return parseAdd(child, sTable);
+      case "CHARLIST":
+        return parseCharList(child);
     }
     return null;
+  }
+
+  function parseCharList(node: TNode) {
+    let str = node.children[0].name;
+    let hexData = "";
+    //Convert string into series of hexCodes
+    for (let i = 0; i < str.length; i++) {
+      hexData += str.charCodeAt(i).toString(16) + " ";
+    }
+    //Add NULL string terminator
+    hexData += "00";
+    //Allocate heap space and return placeholder addr
+    return memTable.allocateHeap(hexData);
   }
 
   function parsePrint(node: TNode, sTable: SymbolTable) {
@@ -60,6 +76,11 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
         //Load Y register with result of ADD stored in addr
         //Set X to 01, call SYS to print
         byteCode.push("AC",addr[0],addr[1],"A2","01","FF");
+      } else if (child.name === "CHARLIST") {
+          //Print CharList
+          let addr = parseCharList(child);
+          //Load addr into Y register, set X to 02 and call SYS to print
+          byteCode.push("A0",addr,"A2","02","FF");
       }
     } else {
       switch (child.token.name) {

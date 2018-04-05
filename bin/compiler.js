@@ -35,11 +35,26 @@ function genCode(AST, sTree, memTable) {
     function parseAssign(node, sTable) {
     }
     function parseExpr(node, sTable) {
-        switch (node.children[0].name) {
+        let child = node.children[0];
+        switch (child.name) {
             case "ADD":
-                return parseAdd(node.children[0], sTable);
+                return parseAdd(child, sTable);
+            case "CHARLIST":
+                return parseCharList(child);
         }
         return null;
+    }
+    function parseCharList(node) {
+        let str = node.children[0].name;
+        let hexData = "";
+        //Convert string into series of hexCodes
+        for (let i = 0; i < str.length; i++) {
+            hexData += str.charCodeAt(i).toString(16) + " ";
+        }
+        //Add NULL string terminator
+        hexData += "00";
+        //Allocate heap space and return placeholder addr
+        return memTable.allocateHeap(hexData);
     }
     function parsePrint(node, sTable) {
         let child = node.children[0];
@@ -50,6 +65,12 @@ function genCode(AST, sTree, memTable) {
                 //Load Y register with result of ADD stored in addr
                 //Set X to 01, call SYS to print
                 byteCode.push("AC", addr[0], addr[1], "A2", "01", "FF");
+            }
+            else if (child.name === "CHARLIST") {
+                //Print CharList
+                let addr = parseCharList(child);
+                //Load addr into Y register, set X to 02 and call SYS to print
+                byteCode.push("A0", addr, "A2", "02", "FF");
             }
         }
         else {
@@ -666,8 +687,8 @@ class MemoryTable {
         keys = Object.keys(this.heap);
         let offset = 0;
         for (let key of keys) {
-            this.staticTable[key].loc = (beta + offset).toString(16).padStart(2, "0");
-            offset += this.staticTable.data.split(" ").length;
+            this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0");
+            offset += this.heap[key].data.split(" ").length;
         }
         if (beta + offset > 256) {
             throw this.error();
