@@ -24,7 +24,11 @@ class SymbolTable extends BaseNode {
   }
 
   public getType(varName: string) {
-    return this.table[varName].typeTok.name;
+    let entry = this.table[varName];
+    if (entry === undefined) {
+      return null;
+    }
+    return entry.typeTok.name;
   }
 
   public lookup(name: string) {

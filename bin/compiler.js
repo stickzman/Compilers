@@ -80,6 +80,30 @@ function genCode(AST, sTree, memTable) {
         //Save 00 for 'false' in varAddr
         byteCode.push("A9", "00", "8D", varAddr[0], varAddr[1]);
     }
+    //Evaulate BoolVal, Z flag will be set in byteCode after running
+    function evaulateBoolVal(val) {
+        if (val === "true") {
+            let addr = memTable.allocateStatic();
+            //Store placeholder "0" to compare
+            byteCode.push("A9", "00", "8D", addr[0], addr[1]);
+            //Store "0" in X and compare
+            byteCode.push("A2", "00", "EC", addr[0], addr[1]);
+        }
+        else {
+            let addr = memTable.allocateStatic();
+            //Store placeholder "0" to compare
+            byteCode.push("A9", "01", "8D", addr[0], addr[1]);
+            //Store "0" in X and compare
+            byteCode.push("A2", "00", "EC", addr[0], addr[1]);
+        }
+    }
+    //Evaulate Bool_Expr, Z flag will be set in byteCode after running
+    //Nested Bool_Expr not currently supported
+    function evaulateBoolExpr(node, sTable) {
+        let expr1 = node.children[0];
+        let boolOp = node.children[1];
+        let expr2 = node.children[2];
+    }
     function parseExpr(node, sTable) {
         let child = node.children[0];
         if (child.name === "ADD") {
@@ -1083,6 +1107,9 @@ function analyze(token, pgrmNum) {
         Log.SemMsg("Checking for unused variables...");
         checkUnusedVars(sRoot);
         Log.breakLine();
+        Log.SemMsg("Type checking bool expressions...");
+        checkBoolExprs(root, sRoot);
+        Log.breakLine();
         Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
         Log.print(root.toString(), LogPri.VERBOSE);
         if (!sRoot.isEmpty()) {
@@ -1128,6 +1155,84 @@ function analyze(token, pgrmNum) {
         for (let node of children) {
             checkUnusedVars(node);
         }
+    }
+    function checkBoolExprs(node, sTable) {
+        for (let child of node.children) {
+            if (child.name === "BOOL_EXPR") {
+                let expr1 = child.children[0];
+                let expr2 = child.children[2];
+                if (expr1.name === "CHARLIST") {
+                    if (expr2.name === "CHARLIST" ||
+                        sTable.getType(expr2.name) === "STRING") {
+                        continue;
+                    }
+                    let tok = expr1.children[0].token;
+                    throw boolTypeError(tok);
+                }
+                else if (expr1.name === "ADD" || /[0-9]/.test(expr1.name) ||
+                    sTable.getType(expr1.name) === "INT") {
+                    if (expr2.name === "ADD" || /[0-9]/.test(expr2.name)
+                        || sTable.getType(expr2.name) === "INT") {
+                        continue;
+                    }
+                    else if (/^[a-z]$/.test(expr2.name)) {
+                        let tok = expr2.token;
+                        throw boolTypeError(tok);
+                    }
+                    else {
+                        if (expr1.name === "ADD") {
+                            let tok = expr1.children[0].token;
+                            throw boolTypeError(tok);
+                        }
+                        else {
+                            let tok = expr1.token;
+                            throw boolTypeError(tok);
+                        }
+                    }
+                }
+                else if (/^[a-z]$/.test(expr1.name)) {
+                    let type = sTable.getType(expr1.name);
+                    switch (type) {
+                        case "STRING":
+                            if (expr2.name === "CHARLIST") {
+                                continue;
+                            }
+                            else if (/^[a-z]$/.test(expr2.name)) {
+                                if (sTable.getType(expr2.name) === "STRING") {
+                                    continue;
+                                }
+                            }
+                            break;
+                        case "BOOLEAN":
+                            if (expr2.name === "true" || expr2.name === "false" ||
+                                expr2.name === "BOOL_EXPR" ||
+                                sTable.getType(expr2.name) === "BOOLEAN") {
+                                continue;
+                            }
+                    }
+                    let tok = expr1.token;
+                    throw boolTypeError(tok);
+                }
+                else {
+                    //Expr1 is a BoolVal
+                    if (expr2.name === "true" || expr2.name === "false" ||
+                        sTable.getType(expr2.name) === "BOOLEAN") {
+                        continue;
+                    }
+                    else {
+                        let tok = expr1.token;
+                        throw boolTypeError(tok);
+                    }
+                }
+            }
+            else if (child.name === "BLOCK") {
+                checkBoolExprs(child, sTable.nextChild());
+            }
+            else if (child.hasChildren) {
+                checkBoolExprs(child, sTable);
+            }
+        }
+        return;
     }
     function analyzeBlock(parent, scope) {
         Log.SemMsg("Adding new Block to AST...");
@@ -1377,6 +1482,9 @@ function analyze(token, pgrmNum) {
         e.name = "Semantic_Error";
         return e;
     }
+    function boolTypeError(tok) {
+        return error(`Type Mismatch in boolean expression at line:${tok.line} col:${tok.col}`);
+    }
     function typeError(assignEntry, valToken, valType, displayVal = true) {
         let msg = `Type Mismatch: attempted to assign [${valType}`;
         msg += (displayVal) ? `, ${valToken.symbol}] ` : "] ";
@@ -1494,7 +1602,11 @@ class SymbolTable extends BaseNode {
         return this.table[varName].memLoc;
     }
     getType(varName) {
-        return this.table[varName].typeTok.name;
+        let entry = this.table[varName];
+        if (entry === undefined) {
+            return null;
+        }
+        return entry.typeTok.name;
     }
     lookup(name) {
         let node = this;

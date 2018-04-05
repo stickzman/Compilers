@@ -18,6 +18,10 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     checkUnusedVars(sRoot);
 
     Log.breakLine();
+    Log.SemMsg("Type checking bool expressions...");
+    checkBoolExprs(root, sRoot);
+
+    Log.breakLine();
     Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
     Log.print(root.toString(), LogPri.VERBOSE);
 
@@ -66,6 +70,75 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     for (let node of children) {
       checkUnusedVars(node);
     }
+  }
+
+  function checkBoolExprs(node: TNode, sTable: SymbolTable) {
+    for(let child of node.children) {
+      if (child.name === "BOOL_EXPR") {
+        let expr1 = child.children[0];
+        let expr2 = child.children[2];
+        if (expr1.name === "CHARLIST") {
+          if (expr2.name === "CHARLIST" ||
+              sTable.getType(expr2.name) === "STRING") {
+                continue;
+          }
+          let tok = (<TNode>expr1.children[0]).token;
+          throw boolTypeError(tok);
+        } else if (expr1.name === "ADD" || /[0-9]/.test(expr1.name) ||
+                    sTable.getType(expr1.name) === "INT") {
+          if (expr2.name === "ADD" || /[0-9]/.test(expr2.name)
+              || sTable.getType(expr2.name) === "INT") {
+            continue;
+          } else if (/^[a-z]$/.test(expr2.name)) {
+            let tok = (<TNode>expr2).token;
+            throw boolTypeError(tok);
+          } else {
+            if (expr1.name === "ADD") {
+              let tok = (<TNode>expr1.children[0]).token;
+              throw boolTypeError(tok);
+            } else {
+              let tok = (<TNode>expr1).token;
+              throw boolTypeError(tok);
+            }
+          }
+        } else if (/^[a-z]$/.test(expr1.name)) {
+          let type = sTable.getType(expr1.name);
+          switch (type) {
+            case "STRING":
+              if (expr2.name === "CHARLIST") {
+                continue;
+              } else if (/^[a-z]$/.test(expr2.name)) {
+                if (sTable.getType(expr2.name) === "STRING") {
+                  continue;
+                }
+              }
+              break;
+            case "BOOLEAN":
+              if (expr2.name === "true" || expr2.name === "false" ||
+                  expr2.name === "BOOL_EXPR" ||
+                  sTable.getType(expr2.name) === "BOOLEAN") {
+                continue;
+              }
+          }
+          let tok = (<TNode>expr1).token;
+          throw boolTypeError(tok);
+        } else {
+          //Expr1 is a BoolVal
+          if (expr2.name === "true" || expr2.name === "false" ||
+              sTable.getType(expr2.name) === "BOOLEAN") {
+            continue;
+          } else {
+            let tok = (<TNode>expr1).token;
+            throw boolTypeError(tok);
+          }
+        }
+      } else if (child.name === "BLOCK") {
+        checkBoolExprs(child, <SymbolTable>sTable.nextChild());
+      } else if (child.hasChildren) {
+        checkBoolExprs(child, sTable);
+      }
+    }
+    return;
   }
 
   function analyzeBlock(parent: TNode, scope: SymbolTable) {
@@ -324,6 +397,10 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     let e = new Error(msg);
     e.name = "Semantic_Error";
     return e;
+  }
+
+  function boolTypeError(tok: Token) {
+    return error(`Type Mismatch in boolean expression at line:${tok.line} col:${tok.col}`);
   }
 
   function typeError(assignEntry, valToken: Token, valType: string, displayVal: boolean = true) {

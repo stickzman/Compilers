@@ -86,6 +86,32 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
     byteCode.push("A9","00","8D",varAddr[0],varAddr[1]);
   }
 
+  //Evaulate BoolVal, Z flag will be set in byteCode after running
+  function evaulateBoolVal(val: string) {
+    if (val === "true") {
+      let addr = memTable.allocateStatic();
+      //Store placeholder "0" to compare
+      byteCode.push("A9","00","8D",addr[0],addr[1]);
+      //Store "0" in X and compare
+      byteCode.push("A2","00","EC",addr[0],addr[1]);
+    } else {
+      let addr = memTable.allocateStatic();
+      //Store placeholder "0" to compare
+      byteCode.push("A9","01","8D",addr[0],addr[1]);
+      //Store "0" in X and compare
+      byteCode.push("A2","00","EC",addr[0],addr[1]);
+    }
+  }
+
+  //Evaulate Bool_Expr, Z flag will be set in byteCode after running
+  //Nested Bool_Expr not currently supported
+  function evaulateBoolExpr(node: TNode, sTable: SymbolTable) {
+    let expr1 = node.children[0];
+    let boolOp = node.children[1];
+    let expr2 = node.children[2];
+    
+  }
+
   function parseExpr(node: TNode, sTable: SymbolTable) {
     let child = node.children[0];
     if (child.name === "ADD") {
