@@ -58,6 +58,6 @@ function compile() {
   byteCode.push("00");
   memTable.correct(byteCode.length);
   let code = memTable.backpatch(byteCode);
-  hexDisplay.value = code.padEnd(512, " 00");
+  hexDisplay.value = code.padEnd(512, " 00").toUpperCase();
   hexDiv.style.display = "block";
 }

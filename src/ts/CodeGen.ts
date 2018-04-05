@@ -66,7 +66,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
       //Evaulate the boolean expression, store result in varAddr
       return;
     }
-    if (/[a-z]/.test(assignNode.name)) {
+    if (/$[a-z]^/.test(assignNode.name)) {
       //Assigning to a variable. Look up variable value and store in varAddr
       let valAddr = sTable.getLocation(assignNode.name);
       byteCode.push("AD",valAddr[0],valAddr[1],"8D",varAddr[0],varAddr[1]);
@@ -79,9 +79,11 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
     }
     if (assignNode.name === "true") {
       //Save 01 for 'true' in varAddr
+      byteCode.push("A9","01","8D",varAddr[0],varAddr[1]);
       return;
     }
     //Save 00 for 'false' in varAddr
+    byteCode.push("A9","00","8D",varAddr[0],varAddr[1]);
   }
 
   function parseExpr(node: TNode, sTable: SymbolTable) {
@@ -92,7 +94,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
     if (child.name === "CHARLIST") {
       return parseCharList(child);
     }
-    if (/[a-z]/.test(child.name)) {
+    if (/$[a-z]^/.test(child.name)) {
       //It's an ID
       return sTable.getLocation(child.name);
     }
@@ -146,11 +148,18 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
               byteCode.push("AC",addr[0],addr[1],"A2","01","FF");
               break;
             case "BOOLEAN":
+              //Load bool into Y register, set X to 01 and call SYS to print
+              byteCode.push("AC",addr[0],addr[1],"A2","01","FF");
               break;
           }
           break;
         case "BOOLVAL":
           //Print true/false
+          if (child.token.symbol === "true") {
+            byteCode.push("A0","01","A2","01","FF");
+          } else {
+            byteCode.push("A0","00","A2","01","FF");
+          }
           break;
         default:
           //Should not be called
@@ -164,7 +173,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
       throw error("Integer Overflow: result of calculation exceeds maximum " +
                   "storage for integer (1 byte)");
     }
-    if (/[a-z]/.test(results[1])) {
+    if (/$[a-z]^/.test(results[1])) {
       //The last element is an ID
       let varLoc = sTable.getLocation(results[1]);
       let resLoc = memTable.allocateStatic();
