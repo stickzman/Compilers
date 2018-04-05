@@ -42,6 +42,41 @@ function genCode(AST, sTree, memTable) {
         sTable.setLocation(node.children[1].name, addr);
     }
     function parseAssign(node, sTable) {
+        let varName = node.children[0].name;
+        let varAddr = sTable.getLocation(varName);
+        let assignNode = node.children[1];
+        if (assignNode.name === "ADD") {
+            //Perform addition, store result in varAddr
+            let resAdd = parseAdd(assignNode, sTable);
+            byteCode.push("AD", resAdd[0], resAdd[1], "8D", varAddr[0], varAddr[1]);
+            return;
+        }
+        if (assignNode.name === "CHARLIST") {
+            //Load charlist into heap, store pointer in varAddr
+            let pointer = parseCharList(assignNode);
+            byteCode.push("A9", pointer, "8D", varAddr[0], varAddr[1]);
+            return;
+        }
+        if (assignNode.name === "BOOL_EXPR") {
+            //Evaulate the boolean expression, store result in varAddr
+            return;
+        }
+        if (/[a-z]/.test(assignNode.name)) {
+            //Assigning to a variable. Look up variable value and store in varAddr
+            let valAddr = sTable.getLocation(assignNode.name);
+            byteCode.push("AD", valAddr[0], valAddr[1], "8D", varAddr[0], varAddr[1]);
+            return;
+        }
+        if (/[0-9]/.test(assignNode.name)) {
+            //Store single digit in varAddr
+            byteCode.push("A9", assignNode.name.padStart(2, "0"), "8D", varAddr[0], varAddr[1]);
+            return;
+        }
+        if (assignNode.name === "true") {
+            //Save 01 for 'true' in varAddr
+            return;
+        }
+        //Save 00 for 'false' in varAddr
     }
     function parseExpr(node, sTable) {
         let child = node.children[0];
