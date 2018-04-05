@@ -127,7 +127,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
 
   function parseAdd(node: TNode, sTable: SymbolTable): string[] {
     let results = optimizeAdd(0, node);
-    if (results[0] > 256) {
+    if (results[0] > 255) {
       throw error("Integer Overflow: result of calculation exceeds maximum " +
                   "storage for integer (1 byte)");
     }
@@ -143,7 +143,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
     } else {
       //The last element is a digit wrapped in a string
       let num = results[0] + parseInt(results[1]);
-      if (num > 256) {
+      if (num > 255) {
         throw error("Integer Overflow: result of calculation exceeds maximum " +
                     "storage for integer (1 byte)");
       }
