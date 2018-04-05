@@ -29,8 +29,6 @@ function genCode(AST, sTree, memTable) {
     function parseDecl(node, sTable) {
         let addr = memTable.allocateStatic();
         sTable.setLocation(node.children[1].name, addr);
-        //Initialize to 0/false/empty string
-        byteCode.push("A9", "00", "8D", addr[0], addr[1]);
     }
     function parseAssign(node, sTable) {
     }
