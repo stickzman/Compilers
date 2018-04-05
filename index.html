@@ -50,9 +50,15 @@
 			</div>
 		</div>
 		<div id="hexDiv" style="display: none">
-			<div class="row pt-3">
+			<div class="row pt-2 pb-1">
 				<div class="col">
 					<label><b>Machine Code</b></label>
+					<!--External Javascript to make copying text to clipboard easy-->
+					<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+					<script>new ClipboardJS('#copyBtn');</script>
+					<button id="copyBtn" class="btn btn-default btn-sm" data-clipboard-action="copy" data-clipboard-target="#hexCode">
+				    Copy
+					</button>
 				</div>
 			</div>
 			<div class="row">
