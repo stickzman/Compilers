@@ -1161,69 +1161,13 @@ function analyze(token, pgrmNum) {
             if (child.name === "BOOL_EXPR") {
                 let expr1 = child.children[0];
                 let expr2 = child.children[2];
-                if (expr1.name === "CHARLIST") {
-                    if (expr2.name === "CHARLIST" ||
-                        sTable.getType(expr2.name) === "STRING") {
-                        continue;
-                    }
-                    let tok = expr1.children[0].token;
-                    throw boolTypeError(tok);
+                if (getBoolType(expr1, sTable) === getBoolType(expr2, sTable)) {
+                    //Types match
+                    continue;
                 }
-                else if (expr1.name === "ADD" || /[0-9]/.test(expr1.name) ||
-                    sTable.getType(expr1.name) === "INT") {
-                    if (expr2.name === "ADD" || /[0-9]/.test(expr2.name)
-                        || sTable.getType(expr2.name) === "INT") {
-                        continue;
-                    }
-                    else if (/^[a-z]$/.test(expr2.name)) {
-                        let tok = expr2.token;
-                        throw boolTypeError(tok);
-                    }
-                    else {
-                        if (expr1.name === "ADD") {
-                            let tok = expr1.children[0].token;
-                            throw boolTypeError(tok);
-                        }
-                        else {
-                            let tok = expr1.token;
-                            throw boolTypeError(tok);
-                        }
-                    }
-                }
-                else if (/^[a-z]$/.test(expr1.name)) {
-                    let type = sTable.getType(expr1.name);
-                    switch (type) {
-                        case "STRING":
-                            if (expr2.name === "CHARLIST") {
-                                continue;
-                            }
-                            else if (/^[a-z]$/.test(expr2.name)) {
-                                if (sTable.getType(expr2.name) === "STRING") {
-                                    continue;
-                                }
-                            }
-                            break;
-                        case "BOOLEAN":
-                            if (expr2.name === "true" || expr2.name === "false" ||
-                                expr2.name === "BOOL_EXPR" ||
-                                sTable.getType(expr2.name) === "BOOLEAN") {
-                                continue;
-                            }
-                    }
-                    let tok = expr1.token;
-                    throw boolTypeError(tok);
-                }
-                else {
-                    //Expr1 is a BoolVal
-                    if (expr2.name === "true" || expr2.name === "false" ||
-                        sTable.getType(expr2.name) === "BOOLEAN") {
-                        continue;
-                    }
-                    else {
-                        let tok = expr1.token;
-                        throw boolTypeError(tok);
-                    }
-                }
+                //Types do not match
+                let tok = child.children[1].token;
+                throw boolTypeError(tok);
             }
             else if (child.name === "BLOCK") {
                 checkBoolExprs(child, sTable.nextChild());
@@ -1233,6 +1177,26 @@ function analyze(token, pgrmNum) {
             }
         }
         return;
+    }
+    function getBoolType(node, sTable) {
+        switch (node.name) {
+            case "true":
+                return "BOOLEAN";
+            case "false":
+                return "BOOLEAN";
+            case "BOOL_EXPR":
+                return "BOOLEAN";
+            case "ADD":
+                return "INT";
+            case "CHARLIST":
+                return "STRING";
+        }
+        if (/^[a-z]$/.test(node.name)) {
+            //It's an ID
+            return sTable.getType(node.name);
+        }
+        //It's a single digit`
+        return "INT";
     }
     function analyzeBlock(parent, scope) {
         Log.SemMsg("Adding new Block to AST...");

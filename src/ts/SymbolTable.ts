@@ -23,7 +23,7 @@ class SymbolTable extends BaseNode {
     return this.table[varName].memLoc;
   }
 
-  public getType(varName: string) {
+  public getType(varName: string): string {
     let entry = this.table[varName];
     if (entry === undefined) {
       return null;
