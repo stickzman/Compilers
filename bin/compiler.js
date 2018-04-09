@@ -9,11 +9,15 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         parseBlock(AST, tempRoot);
         Log.breakLine();
         Log.print(`Program ${pgrmNum} compiled successfully with 0 errors.`, LogPri.INFO);
+        //Allow this program static memory to be overwrriten by future programs
+        memManager.releaseAllStaticMem();
         return byteCode;
     }
     catch (e) {
         if (e.name === "Compilation_Error" || e.name === "Pgrm_Overflow") {
             Log.GenMsg(e, LogPri.ERROR);
+            //Allow this program static memory to be overwrriten by future programs
+            memManager.releaseAllStaticMem();
             return [];
         }
         else {
@@ -51,8 +55,9 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         Log.GenMsg("Ascending Scope...");
     }
     function parseDecl(node, sTable) {
-        Log.GenMsg(`Declaring ${node.children[0].name} '${node.children[1].name}'`);
         let addr = memManager.allocateStatic(false);
+        Log.GenMsg(`Declaring ${node.children[0].name} '${node.children[1].name}'`
+            + `at location [${addr}]`);
         sTable.setLocation(node.children[1].name, addr);
     }
     function parseAssign(node, sTable) {
@@ -950,6 +955,11 @@ class MemoryManager {
                 this.dirtyMemory.push(loc);
             }
         }
+    }
+    releaseAllStaticMem() {
+        //Set the entire contents of static memory to be marked for re-use
+        let keys = Object.keys(this.staticTable);
+        this.dirtyMemory = this.dirtyMemory.concat(keys);
     }
     //Assuming beta and offsets are base 10
     //Will convert to base 16/memory addresses in function

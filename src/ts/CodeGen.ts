@@ -15,10 +15,18 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     Log.breakLine();
     Log.print(`Program ${pgrmNum} compiled successfully with 0 errors.`, LogPri.INFO);
 
+    //Allow this program static memory to be overwrriten by future programs
+    memManager.releaseAllStaticMem();
+
+
     return byteCode;
   } catch(e) {
     if (e.name === "Compilation_Error" || e.name === "Pgrm_Overflow") {
       Log.GenMsg(e, LogPri.ERROR);
+
+      //Allow this program static memory to be overwrriten by future programs
+      memManager.releaseAllStaticMem();
+
       return [];
     } else {
       throw e;
@@ -59,8 +67,9 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
   }
 
   function parseDecl(node: TNode, sTable: SymbolTable) {
-    Log.GenMsg(`Declaring ${node.children[0].name} '${node.children[1].name}'`);
     let addr = memManager.allocateStatic(false);
+    Log.GenMsg(`Declaring ${node.children[0].name} '${node.children[1].name}'`
+                + `at location [${addr}]`);
     sTable.setLocation(node.children[1].name, addr);
   }
 

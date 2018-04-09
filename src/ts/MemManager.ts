@@ -43,6 +43,12 @@ class MemoryManager {
     }
   }
 
+  public releaseAllStaticMem() {
+    //Set the entire contents of static memory to be marked for re-use
+    let keys = Object.keys(this.staticTable);
+    this.dirtyMemory = this.dirtyMemory.concat(keys);    
+  }
+
 
   //Assuming beta and offsets are base 10
   //Will convert to base 16/memory addresses in function
