@@ -58,7 +58,10 @@ function genCode(AST, sTree, memTable) {
             return;
         }
         if (assignNode.name === "BOOL_EXPR") {
-            //Evaulate the boolean expression, store result in varAddr
+            //Evalulate the boolean expression, store result in addr
+            let addr = evalStoreBool(assignNode, sTable);
+            //Load bool result into Acc from memory, store in varAddr
+            byteCode.push("AD", addr[0], addr[1], "8D", varAddr[0], varAddr[1]);
             return;
         }
         if (/$[a-z]^/.test(assignNode.name)) {
@@ -80,29 +83,117 @@ function genCode(AST, sTree, memTable) {
         //Save 00 for 'false' in varAddr
         byteCode.push("A9", "00", "8D", varAddr[0], varAddr[1]);
     }
-    //Evaulate BoolVal, Z flag will be set in byteCode after running
-    function evaulateBoolVal(val) {
+    //evalulate BoolVal, Z flag will be set in byteCode after running
+    function evalBoolVal(val) {
         if (val === "true") {
             let addr = memTable.allocateStatic();
-            //Store placeholder "0" to compare
-            byteCode.push("A9", "00", "8D", addr[0], addr[1]);
-            //Store "0" in X and compare
+            //Store "00" in X and compare with defualt "00" in memory
             byteCode.push("A2", "00", "EC", addr[0], addr[1]);
         }
         else {
             let addr = memTable.allocateStatic();
-            //Store placeholder "0" to compare
-            byteCode.push("A9", "01", "8D", addr[0], addr[1]);
-            //Store "0" in X and compare
-            byteCode.push("A2", "00", "EC", addr[0], addr[1]);
+            //Store "01" in X and compare with defualt "00" in memory
+            byteCode.push("A2", "01", "EC", addr[0], addr[1]);
         }
     }
-    //Evaulate Bool_Expr, Z flag will be set in byteCode after running
+    //evalulate Bool_Expr, Z flag will be set in byteCode after running
     //Nested Bool_Expr not currently supported
-    function evaulateBoolExpr(node, sTable) {
+    function evalBoolExpr(node, sTable) {
         let expr1 = node.children[0];
         let boolOp = node.children[1];
         let expr2 = node.children[2];
+        let addr;
+        if (/^[0-9]$/.test(expr1.name) || expr1.name === "true" ||
+            expr1.name === "false") {
+            loadX(expr1, sTable);
+            addr = getSetMem(expr2, sTable);
+        }
+        else {
+            addr = getSetMem(expr1, sTable);
+            loadX(expr2, sTable);
+        }
+        //Compare X and memory location, setting Z with answer
+        byteCode.push("EC", addr[0], addr[1]);
+        //Return if the boolOperation was "equals" (otherwise "not equals")
+        return boolOp.name === "==";
+    }
+    //Evaluate the boolean expression, then store the result in memory
+    //and return the address
+    function evalStoreBool(node, sTable) {
+        let val1;
+        let val2;
+        if (evalBoolExpr(node, sTable)) {
+            val1 = "01";
+            val2 = "00";
+        }
+        else {
+            val1 = "00";
+            val2 = "01";
+        }
+        let addr = memTable.allocateStatic();
+        //If not equal, jump to writing val2 into memory, otherwise right val1
+        byteCode.push("D0", "0C", "A9", val1, "8D", addr[0], addr[1]);
+        //Add unconditional branch to skip writing val2 into memory
+        addUnconditionalBranch("05");
+        //Write val2 into memory
+        byteCode.push("A9", val2, "8D", addr[0], addr[1]);
+        return addr;
+    }
+    function addUnconditionalBranch(jumpAmt) {
+        //Set X to "01", compare with "false" value (00) in memory, compare, then BNE
+        byteCode.push("A2", "01", "EC", "FV", "XX", "D0", jumpAmt);
+    }
+    //Load the X register with the digit/boolean value in expr1 Node
+    function loadX(node, sTable) {
+        if (/^[0-9]$/.test(node.name)) {
+            //Load single digit into X
+            byteCode.push("A2", "0" + node.name);
+        }
+        else if (node.name === "ADD") {
+            let addr = parseAdd(node, sTable);
+            //Load result into X
+            byteCode.push("AE", addr[0], addr[1]);
+        }
+        else if (node.name === "true") {
+            //Load true (01) into X
+            byteCode.push("A2", "01");
+        }
+        else if (node.name === "false") {
+            //Load false (00) into X
+            byteCode.push("A2", "00");
+        }
+        else if (/^[a-z]$/.test(node.name)) {
+            //Load value of variable into X
+            let addr = sTable.getLocation(node.name);
+            byteCode.push("AE", addr[0], addr[1]);
+        }
+    }
+    //Store value in memory if not already there, then return location address
+    function getSetMem(node, sTable) {
+        if (/^[0-9]$/.test(node.name)) {
+            //Load single digit into Acc, then store
+            let addr = memTable.allocateStatic();
+            byteCode.push("A9", "0" + node.name, "8D", addr[0], addr[1]);
+            return addr;
+        }
+        else if (node.name === "ADD") {
+            //Calculate addition, return the location of result
+            return parseAdd(node, sTable);
+        }
+        else if (node.name === "true") {
+            //Load true (01) into Acc, then store
+            let addr = memTable.allocateStatic();
+            byteCode.push("A9", "01", "8D", addr[0], addr[1]);
+            return addr;
+        }
+        else if (node.name === "false") {
+            //Allocate new memory, then return location of default "00" (false)
+            return memTable.allocateStatic();
+        }
+        else if (/^[a-z]$/.test(node.name)) {
+            //Return location of variable value
+            return sTable.getLocation(node.name);
+        }
     }
     function parseExpr(node, sTable) {
         let child = node.children[0];
@@ -133,7 +224,7 @@ function genCode(AST, sTree, memTable) {
     function parsePrint(node, sTable) {
         let child = node.children[0];
         if (child.hasChildren()) {
-            //Evaulate Expr
+            //Evalulate Expr
             if (child.name === "ADD") {
                 let addr = parseAdd(child, sTable);
                 //Load Y register with result of ADD stored in addr
@@ -764,6 +855,9 @@ class MemoryTable {
         this.staticTable = {};
         this.staticLength = 0;
         this.heapLength = 0;
+        //Initialize a static memory address that will hold a 00
+        //Used as a "false" value for unconditional branching
+        this.staticTable["FV XX"] = "";
     }
     //Allocate new static memory. Return name of placeholder addr
     allocateStatic() {
@@ -791,7 +885,7 @@ class MemoryTable {
         //Convert memory locations of static table
         let hex;
         for (let i = 0; i < keys.length; i++) {
-            hex = (alpha + i).toString(16).padStart(4, "0");
+            hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
             //Swap the order of bytes to reflect the addressing scheme in 6502a
             this.staticTable[keys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
         }
@@ -799,7 +893,7 @@ class MemoryTable {
         keys = Object.keys(this.heap);
         let offset = 0;
         for (let key of keys) {
-            this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0");
+            this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0").toUpperCase();
             offset += this.heap[key].data.split(" ").length;
         }
         if (beta + offset > 256) {

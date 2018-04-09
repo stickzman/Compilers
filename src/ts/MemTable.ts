@@ -6,7 +6,11 @@ class MemoryTable {
   private staticLength = 0;
   private heapLength = 0;
 
-  constructor() {}
+  constructor() {
+    //Initialize a static memory address that will hold a 00
+    //Used as a "false" value for unconditional branching
+    this.staticTable["FV XX"] = "";
+  }
 
   //Allocate new static memory. Return name of placeholder addr
   public allocateStatic(): string[] {
@@ -37,7 +41,7 @@ class MemoryTable {
     //Convert memory locations of static table
     let hex;
     for (let i = 0; i < keys.length; i++) {
-      hex = (alpha + i).toString(16).padStart(4, "0");
+      hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
       //Swap the order of bytes to reflect the addressing scheme in 6502a
       this.staticTable[keys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
     }
@@ -45,7 +49,7 @@ class MemoryTable {
     keys = Object.keys(this.heap);
     let offset = 0;
     for (let key of keys) {
-      this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0");
+      this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0").toUpperCase();
       offset += this.heap[key].data.split(" ").length;
     }
     if (beta + offset > 256) {
