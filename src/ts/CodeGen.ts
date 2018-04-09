@@ -137,21 +137,21 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       let isEqualOp = evalBoolExpr(condNode, sTable);
       if (isEqualOp) {
         //If not equal, branch to end of block
-        var jp = memManager.newJumpPoint();
-        byteCode.push("D0",jp);
+        var endBlockJump = memManager.newJumpPoint();
+        byteCode.push("D0",endBlockJump);
         var preBlockLen = byteCode.length;
       } else {
         //If the operator is !=, BNE to beginning of If Block
         byteCode.push("D0","07");
-        var jp = memManager.newJumpPoint();
+        var endBlockJump = memManager.newJumpPoint();
         //Add unconditional branch to end of If Block
-        addUnconditionalBranch(jp);
+        addUnconditionalBranch(endBlockJump);
         var preBlockLen = byteCode.length;
       }
     }
     parseBlock(block, sTable);
     if (condNode.name === "BOOL_EXPR") {
-      memManager.setJumpPoint(jp, byteCode.length - preBlockLen);
+      memManager.setJumpPoint(endBlockJump, byteCode.length - preBlockLen);
     }
   }
 
@@ -170,6 +170,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       if (isEqualOp) {
         //Conditional is ==
         var postBlockJump = memManager.newJumpPoint();
+        //If BNE, jump to end of block
         byteCode.push("D0",postBlockJump);
         var preBlockLen = byteCode.length;
       } else {
@@ -180,12 +181,12 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       preEvalLen = byteCode.length;
     }
     parseBlock(block, sTable);
+    let preEvalJump = memManager.newJumpPoint();
+    addUnconditionalBranch(preEvalJump);
+    memManager.setJumpPoint(preEvalJump, preEvalLen - byteCode.length);
     if (condNode.name === "BOOL_EXPR") {
       memManager.setJumpPoint(postBlockJump, byteCode.length - preBlockLen);
     }
-    let preEvalJump = memManager.newJumpPoint();
-    addUnconditionalBranch(preEvalJump);
-    memManager.setJumpPoint(preEvalJump, 256-(byteCode.length - preEvalLen));
   }
 
   //evalulate BoolVal, Z flag will be set in byteCode after running

@@ -124,22 +124,22 @@ function genCode(AST, sTree, memManager, pgrmNum) {
             let isEqualOp = evalBoolExpr(condNode, sTable);
             if (isEqualOp) {
                 //If not equal, branch to end of block
-                var jp = memManager.newJumpPoint();
-                byteCode.push("D0", jp);
+                var endBlockJump = memManager.newJumpPoint();
+                byteCode.push("D0", endBlockJump);
                 var preBlockLen = byteCode.length;
             }
             else {
                 //If the operator is !=, BNE to beginning of If Block
                 byteCode.push("D0", "07");
-                var jp = memManager.newJumpPoint();
+                var endBlockJump = memManager.newJumpPoint();
                 //Add unconditional branch to end of If Block
-                addUnconditionalBranch(jp);
+                addUnconditionalBranch(endBlockJump);
                 var preBlockLen = byteCode.length;
             }
         }
         parseBlock(block, sTable);
         if (condNode.name === "BOOL_EXPR") {
-            memManager.setJumpPoint(jp, byteCode.length - preBlockLen);
+            memManager.setJumpPoint(endBlockJump, byteCode.length - preBlockLen);
         }
     }
     function parseWhileStatement(node, sTable) {
@@ -158,6 +158,7 @@ function genCode(AST, sTree, memManager, pgrmNum) {
             if (isEqualOp) {
                 //Conditional is ==
                 var postBlockJump = memManager.newJumpPoint();
+                //If BNE, jump to end of block
                 byteCode.push("D0", postBlockJump);
                 var preBlockLen = byteCode.length;
             }
@@ -170,12 +171,12 @@ function genCode(AST, sTree, memManager, pgrmNum) {
             preEvalLen = byteCode.length;
         }
         parseBlock(block, sTable);
+        let preEvalJump = memManager.newJumpPoint();
+        addUnconditionalBranch(preEvalJump);
+        memManager.setJumpPoint(preEvalJump, preEvalLen - byteCode.length);
         if (condNode.name === "BOOL_EXPR") {
             memManager.setJumpPoint(postBlockJump, byteCode.length - preBlockLen);
         }
-        let preEvalJump = memManager.newJumpPoint();
-        addUnconditionalBranch(preEvalJump);
-        memManager.setJumpPoint(preEvalJump, 256 - (byteCode.length - preEvalLen));
     }
     //evalulate BoolVal, Z flag will be set in byteCode after running
     function evalBoolVal(val) {
@@ -1032,7 +1033,7 @@ class MemoryManager {
         if (this.jumpTable[jumpPoint] === undefined) {
             this.jumpTableLen++;
         }
-        this.jumpTable[jumpPoint] = jumpAmt.toString(16).padStart(2, "0").toUpperCase();
+        this.jumpTable[jumpPoint] = jumpAmt;
     }
     allowOverwrite(addr) {
         if (addr !== null && addr.length === 2) {
@@ -1101,9 +1102,20 @@ class MemoryManager {
         //Backpatch Jump Points
         let jumpKeys = Object.keys(this.jumpTable);
         for (let key of jumpKeys) {
-            Log.print(`Backpatching '${key}' to '${this.jumpTable[key]}'...`, LogPri.VERBOSE);
+            let addr;
+            if (this.jumpTable[key] >= 0) {
+                addr = this.jumpTable[key].toString(16).padStart(2, "0").toUpperCase();
+            }
+            else {
+                let jumpAmt = 256 + this.jumpTable[key];
+                if (jumpAmt == 256) {
+                    jumpAmt = 0;
+                }
+                addr = jumpAmt.toString(16).padStart(2, "0").toUpperCase();
+            }
+            Log.print(`Backpatching '${key}' to '${addr}'...`, LogPri.VERBOSE);
             regExp = new RegExp(key, 'g');
-            code = code.replace(regExp, this.jumpTable[key]);
+            code = code.replace(regExp, addr);
         }
         return code;
     }

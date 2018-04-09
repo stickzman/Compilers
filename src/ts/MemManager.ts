@@ -46,7 +46,7 @@ class MemoryManager {
     if (this.jumpTable[jumpPoint] === undefined) {
       this.jumpTableLen++;
     }
-    this.jumpTable[jumpPoint] = jumpAmt.toString(16).padStart(2, "0").toUpperCase();
+    this.jumpTable[jumpPoint] = jumpAmt;
   }
 
   public allowOverwrite(addr: string[]) {
@@ -120,9 +120,17 @@ class MemoryManager {
     //Backpatch Jump Points
     let jumpKeys = Object.keys(this.jumpTable);
     for (let key of jumpKeys) {
-      Log.print(`Backpatching '${key}' to '${this.jumpTable[key]}'...`, LogPri.VERBOSE);
+      let addr: string;
+      if (this.jumpTable[key] >= 0) {
+        addr = this.jumpTable[key].toString(16).padStart(2, "0").toUpperCase();
+      } else {
+        let jumpAmt = 256 + this.jumpTable[key];
+        if (jumpAmt == 256) {jumpAmt = 0;}
+        addr = jumpAmt.toString(16).padStart(2, "0").toUpperCase();
+      }
+      Log.print(`Backpatching '${key}' to '${addr}'...`, LogPri.VERBOSE);
       regExp = new RegExp(key, 'g');
-      code = code.replace(regExp, this.jumpTable[key]);
+      code = code.replace(regExp, addr);
     }
     return code;
   }
