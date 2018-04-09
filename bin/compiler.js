@@ -49,6 +49,9 @@ function genCode(AST, sTree, memManager, pgrmNum) {
                 case "PRINT":
                     parsePrint(child, sTable);
                     break;
+                case "IF":
+                    parseIfStatement(child, sTable);
+                    break;
                 default:
             }
         }
@@ -104,6 +107,33 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         }
         //Save 00 for 'false' in varAddr
         byteCode.push("A9", "00", "8D", varAddr[0], varAddr[1]);
+    }
+    function parseIfStatement(node, sTable) {
+        Log.GenMsg("Parsing If Statement...");
+        let condNode = node.children[0];
+        let block = node.children[1];
+        if (condNode.name === "false") {
+            //Simply return because the block will never be run
+            return;
+        }
+        else if (condNode.name === "BOOL_EXPR") {
+            //Evaluate the boolExpr, so the Z flag contains the answer
+            let isEqualOp = evalBoolExpr(condNode, sTable);
+            if (isEqualOp) {
+                //If not equal, branch to end of block
+                var jp = memManager.newJumpPoint();
+                byteCode.push("D0", jp);
+                var preBlockLen = byteCode.length;
+            }
+            else {
+                //If the operator is !=, deal with it somehow
+                return;
+            }
+        }
+        parseBlock(block, sTable);
+        if (condNode.name === "BOOL_EXPR") {
+            memManager.setJumpPoint(jp, byteCode.length - preBlockLen);
+        }
     }
     //evalulate BoolVal, Z flag will be set in byteCode after running
     function evalBoolVal(val) {
@@ -260,22 +290,6 @@ function genCode(AST, sTree, memManager, pgrmNum) {
             return sTable.getLocation(node.name);
         }
     }
-    /*
-    function parseExpr(node: TNode, sTable: SymbolTable) {
-      let child = node.children[0];
-      if (child.name === "ADD") {
-        return parseAdd(child, sTable);
-      }
-      if (child.name === "CHARLIST") {
-        return parseCharList(child);
-      }
-      if (/$[a-z]^/.test(child.name)) {
-        //It's an ID
-        return sTable.getLocation(child.name);
-      }
-      return null;
-    }
-    */
     function parseCharList(node) {
         let str = node.children[0].name;
         Log.GenMsg(`Allocating memory in Heap for string "${str}"...`);
@@ -477,7 +491,7 @@ let tests = {
     "Alan Test Case": "/*  Provided By \n  - Alan G Labouseur\n*/\n{}$\t\n{{{{{{}}}}}}$\t\n{{{{{{}}}}}}}$\t\n{int\t@}$",
     "Simple Test 1": "/* Simple Program - No Operations */\n{}$",
     "Simple Test 2": "/* Print Operation */\n{\n\tprint(\"the cake is a lie\")\n}$",
-    "Simple Test 3": "{\n    int a \n    boolean b \n    {\n        string c\n        a = 5 \n        b = true \n        c = \"inta\"\n        print(c)\n    }\n    string c\n    c = \" \"\n    print(c)\n    print(b) \n    print(\" \")\n    print(a)\n}$",
+    "Simple Test 3": "{\n    int a\n    boolean b\n    {\n        string c\n        a = 5\n        b = true\n        c = \"inta\"\n        print(c)\n    }\n    string c\n    c = \" \"\n    print(c)\n    print(b)\n    print(\" \")\n    print(a)\n}$",
     "Long Test Case": "/* Long Test Case */\n{\n\t/* Int Declaration */\n\tint a\n\tint b\n\n\ta = 0\n\tb = 0\n\n\t/* While Loop */\n\twhile (a != 3) {\n    \tprint(a)\n    \twhile (b != 3) {\n        \t\tprint(b)\n        \t\tb = 1 + b\n        \t\tif (b == 2) {\n\t\t\t        /* Print Statement */\n            \t\tprint(\"there is no spoon\"/* This will do nothing */)\n        \t\t}\n    \t}\n\n    \tb = 0\n    \ta = 1 + a\n\t}\n}$",
     "Long Test Case - ONE LINE": "/*LongTestCase*/{/*IntDeclaration*/intaintba=0b=0/*WhileLoop*/while(a!=3){print(a)while(b!=3){print(b)b=1+bif(b==2){/*PrintStatement*/print(\"there is no spoon\"/*Thiswilldonothing*/)}}b=0a=1+a}}$",
     "Invalid String": "/* This will fail because strings\n - can't contain numbers */\n{\n\tprint(\"12\")\n}$",
@@ -940,6 +954,8 @@ class MemoryManager {
         this.heap = {};
         this.dirtyMemory = [];
         this.staticTable = {};
+        this.jumpTable = {};
+        this.jumpTableLen = 0;
         this.staticLength = 0;
         this.heapLength = 0;
         //Initialize a static memory address that will hold a 00
@@ -964,6 +980,17 @@ class MemoryManager {
         let addr = "H" + this.heapLength++; //Create placeholder address
         this.heap[addr] = { data: hexData, loc: "" };
         return addr;
+    }
+    newJumpPoint() {
+        let jp = "J" + this.jumpTableLen++; //Create placeholder address
+        this.jumpTable[jp] = "";
+        return jp;
+    }
+    setJumpPoint(jumpPoint, jumpAmt) {
+        if (this.jumpTable[jumpPoint] === undefined) {
+            this.jumpTableLen++;
+        }
+        this.jumpTable[jumpPoint] = jumpAmt.toString(16).padStart(2, "0").toUpperCase();
     }
     allowOverwrite(addr) {
         if (addr !== null && addr.length === 2) {
@@ -1028,6 +1055,13 @@ class MemoryManager {
             Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`, LogPri.VERBOSE);
             regExp = new RegExp(key, 'g');
             code = code.replace(regExp, this.heap[key].loc);
+        }
+        //Backpatch Jump Points
+        let jumpKeys = Object.keys(this.jumpTable);
+        for (let key of jumpKeys) {
+            Log.print(`Backpatching '${key}' to '${this.jumpTable[key]}'...`, LogPri.VERBOSE);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.jumpTable[key]);
         }
         return code;
     }
@@ -1762,13 +1796,13 @@ class SymbolTable extends BaseNode {
             initialized: false, used: false };
     }
     setLocation(varName, loc) {
-        this.table[varName].memLoc = loc;
+        this.lookup(varName).memLoc = loc;
     }
     getLocation(varName) {
         return this.lookup(varName).memLoc;
     }
     getType(varName) {
-        let entry = this.table[varName];
+        let entry = this.lookup(varName);
         if (entry === undefined) {
             return null;
         }

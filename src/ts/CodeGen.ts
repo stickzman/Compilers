@@ -59,6 +59,9 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
         case "PRINT":
           parsePrint(child, sTable);
           break;
+        case "IF":
+          parseIfStatement(child, sTable);
+          break;
         default:
           //Should not be called
       }
@@ -117,6 +120,32 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     }
     //Save 00 for 'false' in varAddr
     byteCode.push("A9","00","8D",varAddr[0],varAddr[1]);
+  }
+
+  function parseIfStatement(node: BaseNode, sTable: SymbolTable) {
+    Log.GenMsg("Parsing If Statement...");
+    let condNode = node.children[0];
+    let block = node.children[1];
+    if (condNode.name === "false") {
+      //Simply return because the block will never be run
+      return;
+    } else if (condNode.name === "BOOL_EXPR") {
+      //Evaluate the boolExpr, so the Z flag contains the answer
+      let isEqualOp = evalBoolExpr(condNode, sTable);
+      if (isEqualOp) {
+        //If not equal, branch to end of block
+        var jp = memManager.newJumpPoint();
+        byteCode.push("D0",jp);
+        var preBlockLen = byteCode.length;
+      } else {
+        //If the operator is !=, deal with it somehow
+        return;
+      }
+    }
+    parseBlock(block, sTable);
+    if (condNode.name === "BOOL_EXPR") {
+      memManager.setJumpPoint(jp, byteCode.length - preBlockLen);
+    }
   }
 
   //evalulate BoolVal, Z flag will be set in byteCode after running
@@ -265,23 +294,6 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       return sTable.getLocation(node.name);
     }
   }
-
-  /*
-  function parseExpr(node: TNode, sTable: SymbolTable) {
-    let child = node.children[0];
-    if (child.name === "ADD") {
-      return parseAdd(child, sTable);
-    }
-    if (child.name === "CHARLIST") {
-      return parseCharList(child);
-    }
-    if (/$[a-z]^/.test(child.name)) {
-      //It's an ID
-      return sTable.getLocation(child.name);
-    }
-    return null;
-  }
-  */
 
   function parseCharList(node: TNode): string {
     let str = node.children[0].name;

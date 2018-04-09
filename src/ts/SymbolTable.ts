@@ -16,7 +16,7 @@ class SymbolTable extends BaseNode {
   }
 
   public setLocation(varName: string, loc: string[]) {
-    this.table[varName].memLoc = loc;
+    this.lookup(varName).memLoc = loc;
   }
 
   public getLocation(varName: string) {
@@ -24,7 +24,7 @@ class SymbolTable extends BaseNode {
   }
 
   public getType(varName: string): string {
-    let entry = this.table[varName];
+    let entry = this.lookup(varName);
     if (entry === undefined) {
       return null;
     }

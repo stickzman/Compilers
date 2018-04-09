@@ -4,6 +4,8 @@ class MemoryManager {
   private heap: HashTable = {};
   private dirtyMemory: string[] = [];
   private staticTable: HashTable = {};
+  private jumpTable: HashTable = {};
+  private jumpTableLen = 0;
   private staticLength = 0;
   private heapLength = 0;
 
@@ -34,6 +36,19 @@ class MemoryManager {
     return addr;
   }
 
+  public newJumpPoint() {
+    let jp = "J" + this.jumpTableLen++; //Create placeholder address
+    this.jumpTable[jp] = "";
+    return jp;
+  }
+
+  public setJumpPoint(jumpPoint: string, jumpAmt: number) {
+    if (this.jumpTable[jumpPoint] === undefined) {
+      this.jumpTableLen++;
+    }
+    this.jumpTable[jumpPoint] = jumpAmt.toString(16).padStart(2, "0").toUpperCase();
+  }
+
   public allowOverwrite(addr: string[]) {
     if (addr !== null && addr.length === 2) {
       let loc = addr.join(" ");
@@ -46,7 +61,7 @@ class MemoryManager {
   public releaseAllStaticMem() {
     //Set the entire contents of static memory to be marked for re-use
     let keys = Object.keys(this.staticTable);
-    this.dirtyMemory = this.dirtyMemory.concat(keys);    
+    this.dirtyMemory = this.dirtyMemory.concat(keys);
   }
 
 
@@ -101,6 +116,13 @@ class MemoryManager {
       Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`, LogPri.VERBOSE);
       regExp = new RegExp(key, 'g');
       code = code.replace(regExp, this.heap[key].loc);
+    }
+    //Backpatch Jump Points
+    let jumpKeys = Object.keys(this.jumpTable);
+    for (let key of jumpKeys) {
+      Log.print(`Backpatching '${key}' to '${this.jumpTable[key]}'...`, LogPri.VERBOSE);
+      regExp = new RegExp(key, 'g');
+      code = code.replace(regExp, this.jumpTable[key]);
     }
     return code;
   }
