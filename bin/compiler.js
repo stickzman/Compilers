@@ -278,7 +278,7 @@ function genCode(AST, sTree, memManager, pgrmNum) {
     */
     function parseCharList(node) {
         let str = node.children[0].name;
-        Log.GenMsg(`Allocating memory in Heap for string '${str}'...`);
+        Log.GenMsg(`Allocating memory in Heap for string "${str}"...`);
         let hexData = "";
         //Convert string into series of hexCodes
         for (let i = 0; i < str.length; i++) {
