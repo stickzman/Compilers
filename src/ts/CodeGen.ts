@@ -62,6 +62,9 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
         case "IF":
           parseIfStatement(child, sTable);
           break;
+        case "WHILE":
+          parseWhileStatement(child, sTable);
+          break;
         default:
           //Should not be called
       }
@@ -150,6 +153,39 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     if (condNode.name === "BOOL_EXPR") {
       memManager.setJumpPoint(jp, byteCode.length - preBlockLen);
     }
+  }
+
+  function parseWhileStatement(node: BaseNode, sTable: SymbolTable) {
+    Log.GenMsg("Parsing While Statement...");
+    let condNode = node.children[0];
+    let block = node.children[1];
+    let preEvalLen: number;
+    if (condNode.name === "false") {
+      //Simply return because the block will never be run
+      return;
+    } else if (condNode.name === "BOOL_EXPR") {
+      //Evaluate the boolExpr, so the Z flag contains the answer
+      preEvalLen = byteCode.length;
+      let isEqualOp = evalBoolExpr(condNode, sTable);
+      if (isEqualOp) {
+        //Conditional is ==
+        var postBlockJump = memManager.newJumpPoint();
+        byteCode.push("D0",postBlockJump);
+        var preBlockLen = byteCode.length;
+      } else {
+        //Conditional is !=
+        return;
+      }
+    } else if (condNode.name === "true") {
+      preEvalLen = byteCode.length;
+    }
+    parseBlock(block, sTable);
+    if (condNode.name === "BOOL_EXPR") {
+      memManager.setJumpPoint(postBlockJump, byteCode.length - preBlockLen);
+    }
+    let preEvalJump = memManager.newJumpPoint();
+    addUnconditionalBranch(preEvalJump);
+    memManager.setJumpPoint(preEvalJump, 256-(byteCode.length - preEvalLen));
   }
 
   //evalulate BoolVal, Z flag will be set in byteCode after running
