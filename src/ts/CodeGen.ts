@@ -102,7 +102,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       memManager.allowOverwrite(addr);
       return;
     }
-    if (/$[a-z]^/.test(assignNode.name)) {
+    if (/^[a-z]$/.test(assignNode.name)) {
       //Assigning to a variable. Look up variable value and store in varAddr
       let valAddr = sTable.getLocation(assignNode.name);
       byteCode.push("AD",valAddr[0],valAddr[1],"8D",varAddr[0],varAddr[1]);
@@ -138,8 +138,12 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
         byteCode.push("D0",jp);
         var preBlockLen = byteCode.length;
       } else {
-        //If the operator is !=, deal with it somehow
-        return;
+        //If the operator is !=, BNE to beginning of If Block
+        byteCode.push("D0","07");
+        var jp = memManager.newJumpPoint();
+        //Add unconditional branch to end of If Block
+        addUnconditionalBranch(jp);
+        var preBlockLen = byteCode.length;
       }
     }
     parseBlock(block, sTable);
@@ -378,7 +382,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       throw error("Integer Overflow: result of calculation exceeds maximum " +
                   "storage for integer (1 byte)");
     }
-    if (/$[a-z]^/.test(results[1])) {
+    if (/^[a-z]$/.test(results[1])) {
       //The last element is an ID
       let varLoc = sTable.getLocation(results[1]);
       let resLoc = memManager.allocateStatic();
@@ -389,7 +393,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       return resLoc;
     } else {
       //The last element is a digit wrapped in a string
-      let num = results[0] + parseInt(results[1]);
+      let num: number = results[0] + parseInt(results[1]);
       if (num > 255) {
         throw error("Integer Overflow: result of calculation exceeds maximum " +
                     "storage for integer (1 byte)");
