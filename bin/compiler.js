@@ -135,6 +135,23 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         else if (expr2.name === "BOOL_EXPR") {
             addr = evalStoreBool(expr2, sTable);
         }
+        else if (expr1.name === "CHARLIST" || expr2.name === "CHARLIST") {
+            throw error("String comparison not currently supported.");
+        }
+        //Check that there are no string variables in expression
+        if (/^[a-z]$/.test(expr1.name)) {
+            let type = sTable.getType(expr1.name);
+            if (type === "STRING") {
+                throw error("String comparison not currently supported.");
+            }
+        }
+        if (/^[a-z]$/.test(expr2.name)) {
+            let type = sTable.getType(expr2.name);
+            if (type === "STRING") {
+                throw error("String comparison not currently supported.");
+            }
+        }
+        //Continue with expression evaluation
         if (addr === null) {
             //No nested boolExpr, carry on as usual
             if (/^[0-9]$/.test(expr1.name) || expr1.name === "true") {
