@@ -92,13 +92,12 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
   //evalulate BoolVal, Z flag will be set in byteCode after running
   function evalBoolVal(val: string) {
     if (val === "true") {
-      let addr = memTable.allocateStatic();
       //Store "00" in X and compare with defualt "00" in memory
-      byteCode.push("A2","00","EC",addr[0],addr[1]);
-    } else {
-      let addr = memTable.allocateStatic();
+      byteCode.push("A2","00","EC","FV","XX");
+    }
+    if (val === "false") {
       //Store "01" in X and compare with defualt "00" in memory
-      byteCode.push("A2","01","EC",addr[0],addr[1]);
+      byteCode.push("A2","01","EC","FV","XX");
     }
   }
 
@@ -108,14 +107,33 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
     let expr1 = node.children[0];
     let boolOp = node.children[1];
     let expr2 = node.children[2];
-    let addr;
-    if (/^[0-9]$/.test(expr1.name) || expr1.name === "true" ||
-        expr1.name === "false") {
-      loadX(expr1, sTable);
-      addr = getSetMem(expr2, sTable);
+    let addr = null;
+    let addr2 = null;
+    if (expr1.name === "BOOL_EXPR") {
+      addr = evalStoreBool(expr1, sTable);
+      if (expr2.name === "BOOL_EXPR") {
+        addr2 = evalStoreBool(expr2, sTable);
+      }
+    } else if (expr2.name === "BOOL_EXPR") {
+      addr = evalStoreBool(expr2, sTable);
+    }
+    if (addr === null) {
+      //No nested boolExpr, carry on as usual
+      if (/^[0-9]$/.test(expr1.name) || expr1.name === "true" ||
+      expr1.name === "false") {
+        loadX(expr1, sTable);
+        addr = getSetMem(expr2, sTable);
+      } else {
+        addr = getSetMem(expr1, sTable);
+        loadX(expr2, sTable);
+      }
     } else {
-      addr = getSetMem(expr1, sTable);
-      loadX(expr2, sTable);
+      if (addr2 === null) {
+        loadX(expr2, sTable);
+      } else {
+        //Load result of second BoolExpr into X from memory
+        byteCode.push("AE",addr2[0],addr2[1]);
+      }
     }
     //Compare X and memory location, setting Z with answer
     byteCode.push("EC",addr[0],addr[1]);
