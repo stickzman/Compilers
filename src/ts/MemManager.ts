@@ -42,7 +42,14 @@ class MemoryManager {
     return jp;
   }
 
-  public setJumpPoint(jumpPoint: string, jumpAmt: number) {
+  public setJumpPoint(jumpPoint: string, start: number, end: number) {
+    if (this.jumpTable[jumpPoint] === undefined) {
+      this.jumpTableLen++;
+    }
+    this.jumpTable[jumpPoint] = end - start;
+  }
+
+  public setJumpPointManual(jumpPoint: string, jumpAmt: number) {
     if (this.jumpTable[jumpPoint] === undefined) {
       this.jumpTableLen++;
     }

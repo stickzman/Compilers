@@ -129,6 +129,8 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     Log.GenMsg("Parsing If Statement...");
     let condNode = node.children[0];
     let block = node.children[1];
+    let preBlock_PostBlock: string;
+    let preBlockPos: number;
     if (condNode.name === "false") {
       //Simply return because the block will never be run
       return;
@@ -137,21 +139,21 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       let isEqualOp = evalBoolExpr(condNode, sTable);
       if (isEqualOp) {
         //If not equal, branch to end of block
-        var endBlockJump = memManager.newJumpPoint();
-        byteCode.push("D0",endBlockJump);
-        var preBlockLen = byteCode.length;
+        preBlock_PostBlock = memManager.newJumpPoint();
+        byteCode.push("D0",preBlock_PostBlock);
+        preBlockPos = byteCode.length;
       } else {
         //If the operator is !=, BNE to beginning of If Block
         byteCode.push("D0","07");
-        var endBlockJump = memManager.newJumpPoint();
         //Add unconditional branch to end of If Block
-        addUnconditionalBranch(endBlockJump);
-        var preBlockLen = byteCode.length;
+        preBlock_PostBlock = memManager.newJumpPoint();
+        addUnconditionalBranch(preBlock_PostBlock);
+        preBlockPos = byteCode.length;
       }
     }
     parseBlock(block, sTable);
     if (condNode.name === "BOOL_EXPR") {
-      memManager.setJumpPoint(endBlockJump, byteCode.length - preBlockLen);
+      memManager.setJumpPoint(preBlock_PostBlock, preBlockPos, byteCode.length);
     }
   }
 
@@ -159,33 +161,43 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     Log.GenMsg("Parsing While Statement...");
     let condNode = node.children[0];
     let block = node.children[1];
-    let preEvalLen: number;
+    let preBlock_PostBlock: string;
+    let preEvalPos: number;
+    let preBlockPos: number;
     if (condNode.name === "false") {
       //Simply return because the block will never be run
       return;
     } else if (condNode.name === "BOOL_EXPR") {
+      preEvalPos = byteCode.length;
       //Evaluate the boolExpr, so the Z flag contains the answer
-      preEvalLen = byteCode.length;
       let isEqualOp = evalBoolExpr(condNode, sTable);
       if (isEqualOp) {
         //Conditional is ==
-        var postBlockJump = memManager.newJumpPoint();
+        preBlock_PostBlock = memManager.newJumpPoint();
         //If BNE, jump to end of block
-        byteCode.push("D0",postBlockJump);
-        var preBlockLen = byteCode.length;
+        byteCode.push("D0",preBlock_PostBlock);
+        preBlockPos = byteCode.length;
       } else {
         //Conditional is !=
-        return;
+        //If BNE, jump to start of block
+        byteCode.push("D0","07");
+        //Otherwise, unconditionally branch to end of While Block
+        preBlock_PostBlock = memManager.newJumpPoint();
+        addUnconditionalBranch(preBlock_PostBlock);
+        preBlockPos = byteCode.length;
       }
     } else if (condNode.name === "true") {
-      preEvalLen = byteCode.length;
+      //Unconditional branch back here infinitely
+      preEvalPos = byteCode.length;
     }
+    //Add Block to hexCode
     parseBlock(block, sTable);
-    let preEvalJump = memManager.newJumpPoint();
-    addUnconditionalBranch(preEvalJump);
-    memManager.setJumpPoint(preEvalJump, preEvalLen - byteCode.length);
+    //Unconditionally branch to beginning of conditional
+    let postBlock_preEval = memManager.newJumpPoint();
+    addUnconditionalBranch(postBlock_preEval);
+    memManager.setJumpPoint(postBlock_preEval, byteCode.length, preEvalPos);
     if (condNode.name === "BOOL_EXPR") {
-      memManager.setJumpPoint(postBlockJump, byteCode.length - preBlockLen);
+      memManager.setJumpPoint(preBlock_PostBlock, preBlockPos, byteCode.length);
     }
   }
 
@@ -213,15 +225,16 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     let addr2 = null;
     if (expr1.name === "BOOL_EXPR") {
       addr = evalStoreBool(expr1, sTable);
-      if (expr2.name === "BOOL_EXPR") {
-        addr2 = evalStoreBool(expr2, sTable);
-      }
-    } else if (expr2.name === "BOOL_EXPR") {
-      addr = evalStoreBool(expr2, sTable);
-    } else if (expr1.name === "CHARLIST" || expr2.name === "CHARLIST") {
+    }
+    if (expr2.name === "BOOL_EXPR") {
+      addr2 = evalStoreBool(expr2, sTable);
+    }
+    //Check there are no strings in expression
+    //TODO: Implement string comparison
+    //----------------------------------
+    if (expr1.name === "CHARLIST" || expr2.name === "CHARLIST") {
       throw error("String comparison not currently supported.");
     }
-    //Check that there are no string variables in expression
     if (/^[a-z]$/.test(expr1.name)) {
       let type = sTable.getType(expr1.name);
       if (type === "STRING") {
@@ -234,8 +247,9 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
         throw error("String comparison not currently supported.");
       }
     }
+    //-----------------------------------
     //Continue with expression evaluation
-    if (addr === null) {
+    if (addr === null && addr2 === null) {
       //No nested boolExpr, carry on as usual
       if (/^[0-9]$/.test(expr1.name) || expr1.name === "true") {
         loadX(expr1, sTable);
@@ -245,14 +259,27 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
         loadX(expr2, sTable);
       }
     } else {
-      if (addr2 === null) {
-        loadX(expr2, sTable);
+      if (addr === null) {
+        //Expr1 is not a boolExpr, load its value into X
+        loadX(expr1, sTable);
+        if (addr2 === null) {
+          addr = getSetMem(expr2, sTable);
+        } else {
+          addr = addr2;
+        }
       } else {
-        //Load result of second BoolExpr into X from memory
-        byteCode.push("AE",addr2[0],addr2[1]);
+        if (addr2 === null) {
+          //Expr1 is a BoolExpr, but not Expr2
+          loadX(expr2, sTable);
+        } else {
+          //Both Exprs are BoolExprs
+          //Load result of second BoolExpr into X from memory
+          byteCode.push("AE",addr2[0],addr2[1]);
+        }
+        //Allow result of sub-boolean expressions to be overwrriten
+        memManager.allowOverwrite(addr);
       }
       //Allow result of sub-boolean expressions to be overwrriten
-      memManager.allowOverwrite(addr);
       memManager.allowOverwrite(addr2);
     }
     //Compare X and memory location, setting Z with answer
