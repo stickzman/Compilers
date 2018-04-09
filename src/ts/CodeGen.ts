@@ -1,4 +1,5 @@
-function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): string[] {
+function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
+                  pgrmNum: number): string[] {
   //Array of machine instructions in hexadecimal code
   let byteCode: string[] = [];
 
@@ -6,20 +7,35 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): str
   let tempRoot = new SymbolTable();
   tempRoot.addChild(sTree);
 
+  resetSymTableInd(tempRoot);
+
   try{
     parseBlock(AST, tempRoot);
+
+    Log.breakLine();
+    Log.print(`Program ${pgrmNum} compiled successfully with 0 errors.`, LogPri.INFO);
+
     return byteCode;
   } catch(e) {
     if (e.name === "Compilation_Error" || e.name === "Pgrm_Overflow") {
-      Log.print(e, LogPri.ERROR);
+      Log.GenMsg(e, LogPri.ERROR);
       return [];
     } else {
       throw e;
     }
   }
 
+  function resetSymTableInd(sTable: SymbolTable) {
+    sTable.resetSiblingIndex();
+    for (let child of sTable.children) {
+      resetSymTableInd(<SymbolTable>child);
+    }
+  }
 
   function parseBlock(node: TNode, sTable: SymbolTable) {
+    if (!node.isRoot()) {
+      Log.GenMsg("Descending Scope...");
+    }
     sTable = <SymbolTable>sTable.nextChild();
     for (let child of node.children) {
       switch (child.name) {
@@ -39,14 +55,17 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): str
           //Should not be called
       }
     }
+    Log.GenMsg("Ascending Scope...");
   }
 
   function parseDecl(node: TNode, sTable: SymbolTable) {
+    Log.GenMsg(`Declaring ${node.children[0].name} '${node.children[1].name}'`);
     let addr = memManager.allocateStatic(false);
     sTable.setLocation(node.children[1].name, addr);
   }
 
   function parseAssign(node: TNode, sTable: SymbolTable) {
+    Log.GenMsg(`Assigning value to variable '${node.children[0].name}'`);
     let varName = node.children[0].name;
     let varAddr = sTable.getLocation(varName);
     let assignNode = node.children[1];
@@ -93,6 +112,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): str
 
   //evalulate BoolVal, Z flag will be set in byteCode after running
   function evalBoolVal(val: string) {
+    Log.GenMsg(`Evaluating single boolVal '${val}'...`);
     if (val === "true") {
       //Store "00" in X and compare with defualt "00" in memory
       byteCode.push("A2","00","EC","FV","XX");
@@ -106,6 +126,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): str
   //evalulate Bool_Expr, Z flag will be set in byteCode after running
   //Nested Bool_Expr not currently supported
   function evalBoolExpr(node: TNode, sTable: SymbolTable): boolean {
+    Log.GenMsg("Evaulating Bool_Expr...");
     let expr1 = node.children[0];
     let boolOp = node.children[1];
     let expr2 = node.children[2];
@@ -157,6 +178,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): str
       val1 = "00";
       val2 = "01";
     }
+    Log.GenMsg("Storing boolean expression result...");
     let addr = memManager.allocateStatic();
     //If not equal, jump to writing val2 into memory, otherwise right val1
     byteCode.push("D0","0C","A9",val1,"8D",addr[0],addr[1]);
@@ -219,6 +241,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): str
     }
   }
 
+  /*
   function parseExpr(node: TNode, sTable: SymbolTable) {
     let child = node.children[0];
     if (child.name === "ADD") {
@@ -233,9 +256,11 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): str
     }
     return null;
   }
+  */
 
   function parseCharList(node: TNode): string {
     let str = node.children[0].name;
+    Log.GenMsg(`Allocating memory in Heap for string '${str}'...`);
     let hexData = "";
     //Convert string into series of hexCodes
     for (let i = 0; i < str.length; i++) {
@@ -248,6 +273,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): str
   }
 
   function parsePrint(node: TNode, sTable: SymbolTable) {
+    Log.GenMsg("Parsing Print Statement...");
     let child = <TNode>node.children[0];
     if (child.hasChildren()) {
       //Evalulate Expr
@@ -309,6 +335,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): str
   }
 
   function parseAdd(node: TNode, sTable: SymbolTable): string[] {
+    Log.GenMsg("Parsing Add subtree...");
     let results = optimizeAdd(0, node);
     if (results[0] > 255) {
       throw error("Integer Overflow: result of calculation exceeds maximum " +

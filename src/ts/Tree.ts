@@ -27,10 +27,15 @@ class BaseNode {
         this.siblingIndex = -1;
       }
     }
+    return null;
   }
 
   public getSiblings() {
     return this.parent.children;
+  }
+
+  public resetSiblingIndex() {
+    this.siblingIndex = -1;
   }
 
   public getLeafNodes() {

@@ -49,14 +49,16 @@ function compile() {
     let semRes = analyze(tokenLinkedList, i+1);
     if (semRes === null) {continue;}
     Log.breakLine();
-    Log.print("Compiling Program " + (i+1) + "...");
-    let codeArr = genCode(semRes[0], semRes[1], memTable);
+    Log.print("Generating code for Program " + (i+1) + "...");
+    let codeArr = genCode(semRes[0], semRes[1], memTable, i+1);
     byteCode = byteCode.concat(codeArr);
   }
   if (byteCode.length === 0) {return;}
   //Perform backpatching and display machine code
   byteCode.push("00");
   memTable.correct(byteCode.length);
+  Log.breakLine(LogPri.VERBOSE);
+  Log.dottedLine(LogPri.VERBOSE);
   let code = memTable.backpatch(byteCode);
   hexDisplay.value = code.padEnd(512, " 00").toUpperCase();
   hexDiv.style.display = "block";

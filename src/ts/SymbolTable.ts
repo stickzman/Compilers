@@ -20,7 +20,7 @@ class SymbolTable extends BaseNode {
   }
 
   public getLocation(varName: string) {
-    return this.table[varName].memLoc;
+    return this.lookup(varName).memLoc;
   }
 
   public getType(varName: string): string {

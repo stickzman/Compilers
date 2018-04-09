@@ -92,6 +92,12 @@ class Log {
     Log.print(str, priority);
   }
 
+  public static GenMsg(msg: string, priority: LogPri = LogPri.VERBOSE) {
+    let str = "CODE_GEN: ";
+    str += msg;
+    Log.print(str, priority);
+  }
+
   public static isClear(): boolean {
     return Log.logElem.value.replace(/[ \n]/g, "") == "";
   }
@@ -106,8 +112,8 @@ class Log {
     }
   }
 
-  public static breakLine() {
-    if (!Log.isLastLineClear()) Log.print("", LogPri.ERROR);
+  public static breakLine(pri: LogPri = LogPri.ERROR) {
+    if (!Log.isLastLineClear()) Log.print("", pri);
   }
 
   public static dottedLine(pri: LogPri) {

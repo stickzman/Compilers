@@ -86,13 +86,13 @@ class MemoryManager {
     //Backpatch static locations
     let regExp: RegExp;
     for (let key of staticKeys) {
-      Log.print(`Backpatching '${key}' to '${this.staticTable[key]}'...`);
+      Log.print(`Backpatching '${key}' to '${this.staticTable[key]}'...`, LogPri.VERBOSE);
       regExp = new RegExp(key, 'g');
       code = code.replace(regExp, this.staticTable[key]);
     }
     //Backpatch static locations
     for (let key of heapKeys) {
-      Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`);
+      Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`, LogPri.VERBOSE);
       regExp = new RegExp(key, 'g');
       code = code.replace(regExp, this.heap[key].loc);
     }
