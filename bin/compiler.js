@@ -1,4 +1,4 @@
-function genCode(AST, sTree, memTable) {
+function genCode(AST, sTree, memManager) {
     //Array of machine instructions in hexadecimal code
     let byteCode = [];
     //Add an empty placeholder root for sTree (workaround for parseBlock)
@@ -38,7 +38,7 @@ function genCode(AST, sTree, memTable) {
         }
     }
     function parseDecl(node, sTable) {
-        let addr = memTable.allocateStatic();
+        let addr = memManager.allocateStatic(false);
         sTable.setLocation(node.children[1].name, addr);
     }
     function parseAssign(node, sTable) {
@@ -49,6 +49,7 @@ function genCode(AST, sTree, memTable) {
             //Perform addition, store result in varAddr
             let resAdd = parseAdd(assignNode, sTable);
             byteCode.push("AD", resAdd[0], resAdd[1], "8D", varAddr[0], varAddr[1]);
+            memManager.allowOverwrite(resAdd);
             return;
         }
         if (assignNode.name === "CHARLIST") {
@@ -62,6 +63,7 @@ function genCode(AST, sTree, memTable) {
             let addr = evalStoreBool(assignNode, sTable);
             //Load bool result into Acc from memory, store in varAddr
             byteCode.push("AD", addr[0], addr[1], "8D", varAddr[0], varAddr[1]);
+            memManager.allowOverwrite(addr);
             return;
         }
         if (/$[a-z]^/.test(assignNode.name)) {
@@ -72,7 +74,7 @@ function genCode(AST, sTree, memTable) {
         }
         if (/[0-9]/.test(assignNode.name)) {
             //Store single digit in varAddr
-            byteCode.push("A9", assignNode.name.padStart(2, "0"), "8D", varAddr[0], varAddr[1]);
+            byteCode.push("A9", "0" + assignNode.name, "8D", varAddr[0], varAddr[1]);
             return;
         }
         if (assignNode.name === "true") {
@@ -113,8 +115,7 @@ function genCode(AST, sTree, memTable) {
         }
         if (addr === null) {
             //No nested boolExpr, carry on as usual
-            if (/^[0-9]$/.test(expr1.name) || expr1.name === "true" ||
-                expr1.name === "false") {
+            if (/^[0-9]$/.test(expr1.name) || expr1.name === "true") {
                 loadX(expr1, sTable);
                 addr = getSetMem(expr2, sTable);
             }
@@ -131,6 +132,9 @@ function genCode(AST, sTree, memTable) {
                 //Load result of second BoolExpr into X from memory
                 byteCode.push("AE", addr2[0], addr2[1]);
             }
+            //Allow result of sub-boolean expressions to be overwrriten
+            memManager.allowOverwrite(addr);
+            memManager.allowOverwrite(addr2);
         }
         //Compare X and memory location, setting Z with answer
         byteCode.push("EC", addr[0], addr[1]);
@@ -150,7 +154,7 @@ function genCode(AST, sTree, memTable) {
             val1 = "00";
             val2 = "01";
         }
-        let addr = memTable.allocateStatic();
+        let addr = memManager.allocateStatic();
         //If not equal, jump to writing val2 into memory, otherwise right val1
         byteCode.push("D0", "0C", "A9", val1, "8D", addr[0], addr[1]);
         //Add unconditional branch to skip writing val2 into memory
@@ -173,6 +177,7 @@ function genCode(AST, sTree, memTable) {
             let addr = parseAdd(node, sTable);
             //Load result into X
             byteCode.push("AE", addr[0], addr[1]);
+            memManager.allowOverwrite(addr);
         }
         else if (node.name === "true") {
             //Load true (01) into X
@@ -192,7 +197,7 @@ function genCode(AST, sTree, memTable) {
     function getSetMem(node, sTable) {
         if (/^[0-9]$/.test(node.name)) {
             //Load single digit into Acc, then store
-            let addr = memTable.allocateStatic();
+            let addr = memManager.allocateStatic();
             byteCode.push("A9", "0" + node.name, "8D", addr[0], addr[1]);
             return addr;
         }
@@ -202,13 +207,13 @@ function genCode(AST, sTree, memTable) {
         }
         else if (node.name === "true") {
             //Load true (01) into Acc, then store
-            let addr = memTable.allocateStatic();
+            let addr = memManager.allocateStatic();
             byteCode.push("A9", "01", "8D", addr[0], addr[1]);
             return addr;
         }
         else if (node.name === "false") {
-            //Allocate new memory, then return location of default "00" (false)
-            return memTable.allocateStatic();
+            //Location of default "00" (false)
+            return ["FV", "XX"];
         }
         else if (/^[a-z]$/.test(node.name)) {
             //Return location of variable value
@@ -239,7 +244,7 @@ function genCode(AST, sTree, memTable) {
         //Add NULL string terminator
         hexData += "00";
         //Allocate heap space and return placeholder addr
-        return memTable.allocateHeap(hexData);
+        return memManager.allocateHeap(hexData);
     }
     function parsePrint(node, sTable) {
         let child = node.children[0];
@@ -250,12 +255,21 @@ function genCode(AST, sTree, memTable) {
                 //Load Y register with result of ADD stored in addr
                 //Set X to 01, call SYS to print
                 byteCode.push("AC", addr[0], addr[1], "A2", "01", "FF");
+                memManager.allowOverwrite(addr);
             }
             else if (child.name === "CHARLIST") {
                 //Print CharList
                 let addr = parseCharList(child);
                 //Load addr into Y register, set X to 02 and call SYS to print
                 byteCode.push("A0", addr, "A2", "02", "FF");
+            }
+            else if (child.name === "BOOL_EXPR") {
+                //Evaulate BoolExpr, store result
+                let addr = evalStoreBool(child, sTable);
+                //Print result
+                byteCode.push("AC", addr[0], addr[1], "A2", "01", "FF");
+                //Release memory
+                memManager.allowOverwrite(addr);
             }
         }
         else {
@@ -304,9 +318,9 @@ function genCode(AST, sTree, memTable) {
         if (/$[a-z]^/.test(results[1])) {
             //The last element is an ID
             let varLoc = sTable.getLocation(results[1]);
-            let resLoc = memTable.allocateStatic();
+            let resLoc = memManager.allocateStatic();
             //Load accumulated num into Acc, then add value stored in the variable
-            byteCode.push("A9", results[0].toString(16), "6D", varLoc[0], varLoc[1]);
+            byteCode.push("A9", results[0].toString(16).padStart(2, "0"), "6D", varLoc[0], varLoc[1]);
             //Store the result in memory, return the location
             byteCode.push("8D", resLoc[0], resLoc[1]);
             return resLoc;
@@ -318,9 +332,9 @@ function genCode(AST, sTree, memTable) {
                 throw error("Integer Overflow: result of calculation exceeds maximum " +
                     "storage for integer (1 byte)");
             }
-            let addr = memTable.allocateStatic();
+            let addr = memManager.allocateStatic();
             //Load the result into Acc, store in memory, return the location
-            byteCode.push("A9", num.toString(16), "8D", addr[0], addr[1]);
+            byteCode.push("A9", num.toString(16).padStart(2, "0"), "8D", addr[0], addr[1]);
             return addr;
         }
         //Recursive helper func traverses ADD subtrees, returns rightmost child and
@@ -372,7 +386,7 @@ function compile() {
     }
     let lineCount = 1;
     let colCount = 0;
-    let memTable = new MemoryTable();
+    let memTable = new MemoryManager();
     let byteCode = [];
     for (let i = 0; i < pgrms.length; i++) {
         Log.pgrmSeparater();
@@ -868,91 +882,6 @@ class Log {
     }
 }
 Log.level = LogPri.VERBOSE;
-/// <reference path="Helper.ts"/>
-class MemoryTable {
-    constructor() {
-        this.heap = {};
-        this.staticTable = {};
-        this.staticLength = 0;
-        this.heapLength = 0;
-        //Initialize a static memory address that will hold a 00
-        //Used as a "false" value for unconditional branching
-        this.staticTable["FV XX"] = "";
-    }
-    //Allocate new static memory. Return name of placeholder addr
-    allocateStatic() {
-        //Create placeholder address
-        let addr = "S" + this.staticLength.toString().padStart(3, "0");
-        this.staticLength++;
-        addr = addr.substr(0, 2) + " " + addr.substr(2);
-        this.staticTable[addr] = "";
-        return addr.split(" ");
-    }
-    //Allocate new heap memory. Return name of placeholder addr
-    allocateHeap(hexData) {
-        let addr = "H" + this.heapLength++; //Create placeholder address
-        this.heap[addr] = { data: hexData, loc: "" };
-        return addr;
-    }
-    //Assuming beta and offsets are base 10
-    //Will convert to base 16/memory addresses in function
-    correct(alpha) {
-        let keys = Object.keys(this.staticTable);
-        let beta = alpha + keys.length;
-        if (beta > 256) {
-            throw this.error();
-        }
-        //Convert memory locations of static table
-        let hex;
-        for (let i = 0; i < keys.length; i++) {
-            hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
-            //Swap the order of bytes to reflect the addressing scheme in 6502a
-            this.staticTable[keys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
-        }
-        //Convert memory locations of heap
-        keys = Object.keys(this.heap);
-        let offset = 0;
-        for (let key of keys) {
-            this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0").toUpperCase();
-            offset += this.heap[key].data.split(" ").length;
-        }
-        if (beta + offset > 256) {
-            throw this.error();
-        }
-    }
-    backpatch(byteArr) {
-        //Pad byteArr with zeros for static locations
-        let staticKeys = Object.keys(this.staticTable);
-        for (let key of staticKeys) {
-            byteArr.push("00");
-        }
-        //Add heap data to end of byteArr
-        let heapKeys = Object.keys(this.heap);
-        for (let key of heapKeys) {
-            byteArr = byteArr.concat(this.heap[key].data.split(" "));
-        }
-        let code = byteArr.join(" ");
-        //Backpatch static locations
-        let regExp;
-        for (let key of staticKeys) {
-            Log.print(`Backpatching '${key}' to '${this.staticTable[key]}'...`);
-            regExp = new RegExp(key, 'g');
-            code = code.replace(regExp, this.staticTable[key]);
-        }
-        //Backpatch static locations
-        for (let key of heapKeys) {
-            Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`);
-            regExp = new RegExp(key, 'g');
-            code = code.replace(regExp, this.heap[key].loc);
-        }
-        return code;
-    }
-    error() {
-        let e = new Error("Program exceeds 256 bytes!");
-        e.name = "Pgrm_Overflow";
-        return e;
-    }
-}
 function parse(token, pgrmNum) {
     let numWarns = 0;
     //Initial parsing of Program
@@ -1767,6 +1696,104 @@ class Token {
         else {
             return this.name + ", " + this.value;
         }
+    }
+}
+/// <reference path="Helper.ts"/>
+class MemoryManager {
+    constructor() {
+        this.heap = {};
+        this.dirtyMemory = [];
+        this.staticTable = {};
+        this.staticLength = 0;
+        this.heapLength = 0;
+        //Initialize a static memory address that will hold a 00
+        //Used as a "false" value for unconditional branching
+        this.staticTable["FV XX"] = "";
+    }
+    //Allocate new static memory. Return name of placeholder addr
+    allocateStatic(allowDirty = true) {
+        if (allowDirty && this.dirtyMemory.length > 0) {
+            let addr = this.dirtyMemory.shift();
+            return addr.split(" ");
+        }
+        //Create placeholder address
+        let addr = "S" + this.staticLength.toString().padStart(3, "0");
+        this.staticLength++;
+        addr = addr.substr(0, 2) + " " + addr.substr(2);
+        this.staticTable[addr] = "";
+        return addr.split(" ");
+    }
+    //Allocate new heap memory. Return name of placeholder addr
+    allocateHeap(hexData) {
+        let addr = "H" + this.heapLength++; //Create placeholder address
+        this.heap[addr] = { data: hexData, loc: "" };
+        return addr;
+    }
+    allowOverwrite(addr) {
+        if (addr !== null && addr.length === 2) {
+            let loc = addr.join(" ");
+            if (this.dirtyMemory.indexOf(loc) === -1) {
+                this.dirtyMemory.push(loc);
+            }
+        }
+    }
+    //Assuming beta and offsets are base 10
+    //Will convert to base 16/memory addresses in function
+    correct(alpha) {
+        let keys = Object.keys(this.staticTable);
+        let beta = alpha + keys.length;
+        if (beta > 256) {
+            throw this.error();
+        }
+        //Convert memory locations of static table
+        let hex;
+        for (let i = 0; i < keys.length; i++) {
+            hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
+            //Swap the order of bytes to reflect the addressing scheme in 6502a
+            this.staticTable[keys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
+        }
+        //Convert memory locations of heap
+        keys = Object.keys(this.heap);
+        let offset = 0;
+        for (let key of keys) {
+            this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0").toUpperCase();
+            offset += this.heap[key].data.split(" ").length;
+        }
+        if (beta + offset > 256) {
+            throw this.error();
+        }
+    }
+    backpatch(byteArr) {
+        //Pad byteArr with zeros for static locations
+        let staticKeys = Object.keys(this.staticTable);
+        for (let key of staticKeys) {
+            byteArr.push("00");
+        }
+        //Add heap data to end of byteArr
+        let heapKeys = Object.keys(this.heap);
+        for (let key of heapKeys) {
+            byteArr = byteArr.concat(this.heap[key].data.split(" "));
+        }
+        let code = byteArr.join(" ");
+        //Backpatch static locations
+        let regExp;
+        for (let key of staticKeys) {
+            Log.print(`Backpatching '${key}' to '${this.staticTable[key]}'...`);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.staticTable[key]);
+        }
+        //Backpatch static locations
+        for (let key of heapKeys) {
+            Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.heap[key].loc);
+        }
+        return code;
+    }
+    error() {
+        let e = new Error("Program exceeds 256 bytes!");
+        e.name = "Pgrm_Overflow";
+        return e;
     }
 }
 //# sourceMappingURL=compiler.js.map

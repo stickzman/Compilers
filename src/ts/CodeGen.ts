@@ -1,4 +1,4 @@
-function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[] {
+function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager): string[] {
   //Array of machine instructions in hexadecimal code
   let byteCode: string[] = [];
 
@@ -42,7 +42,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
   }
 
   function parseDecl(node: TNode, sTable: SymbolTable) {
-    let addr = memTable.allocateStatic();
+    let addr = memManager.allocateStatic(false);
     sTable.setLocation(node.children[1].name, addr);
   }
 
@@ -54,6 +54,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
       //Perform addition, store result in varAddr
       let resAdd = parseAdd(assignNode, sTable);
       byteCode.push("AD",resAdd[0],resAdd[1],"8D",varAddr[0],varAddr[1]);
+      memManager.allowOverwrite(resAdd);
       return;
     }
     if (assignNode.name === "CHARLIST") {
@@ -67,6 +68,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
       let addr = evalStoreBool(assignNode, sTable);
       //Load bool result into Acc from memory, store in varAddr
       byteCode.push("AD",addr[0],addr[1],"8D",varAddr[0],varAddr[1]);
+      memManager.allowOverwrite(addr);
       return;
     }
     if (/$[a-z]^/.test(assignNode.name)) {
@@ -77,7 +79,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
     }
     if (/[0-9]/.test(assignNode.name)) {
       //Store single digit in varAddr
-      byteCode.push("A9",assignNode.name.padStart(2,"0"),"8D",varAddr[0],varAddr[1]);
+      byteCode.push("A9","0"+assignNode.name,"8D",varAddr[0],varAddr[1]);
       return;
     }
     if (assignNode.name === "true") {
@@ -119,8 +121,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
     }
     if (addr === null) {
       //No nested boolExpr, carry on as usual
-      if (/^[0-9]$/.test(expr1.name) || expr1.name === "true" ||
-      expr1.name === "false") {
+      if (/^[0-9]$/.test(expr1.name) || expr1.name === "true") {
         loadX(expr1, sTable);
         addr = getSetMem(expr2, sTable);
       } else {
@@ -134,6 +135,9 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
         //Load result of second BoolExpr into X from memory
         byteCode.push("AE",addr2[0],addr2[1]);
       }
+      //Allow result of sub-boolean expressions to be overwrriten
+      memManager.allowOverwrite(addr);
+      memManager.allowOverwrite(addr2);
     }
     //Compare X and memory location, setting Z with answer
     byteCode.push("EC",addr[0],addr[1]);
@@ -153,7 +157,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
       val1 = "00";
       val2 = "01";
     }
-    let addr = memTable.allocateStatic();
+    let addr = memManager.allocateStatic();
     //If not equal, jump to writing val2 into memory, otherwise right val1
     byteCode.push("D0","0C","A9",val1,"8D",addr[0],addr[1]);
     //Add unconditional branch to skip writing val2 into memory
@@ -177,6 +181,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
       let addr = parseAdd(node, sTable);
       //Load result into X
       byteCode.push("AE",addr[0],addr[1]);
+      memManager.allowOverwrite(addr);
     } else if (node.name === "true") {
       //Load true (01) into X
       byteCode.push("A2","01");
@@ -194,7 +199,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
   function getSetMem(node: BaseNode, sTable: SymbolTable): string[] {
     if (/^[0-9]$/.test(node.name)) {
       //Load single digit into Acc, then store
-      let addr = memTable.allocateStatic();
+      let addr = memManager.allocateStatic();
       byteCode.push("A9","0"+node.name,"8D",addr[0],addr[1]);
       return addr;
     } else if (node.name === "ADD") {
@@ -202,12 +207,12 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
       return parseAdd(node, sTable);
     } else if (node.name === "true") {
       //Load true (01) into Acc, then store
-      let addr = memTable.allocateStatic();
+      let addr = memManager.allocateStatic();
       byteCode.push("A9","01","8D",addr[0],addr[1]);
       return addr;
     } else if (node.name === "false") {
-      //Allocate new memory, then return location of default "00" (false)
-      return memTable.allocateStatic();
+      //Location of default "00" (false)
+      return ["FV","XX"];
     } else if (/^[a-z]$/.test(node.name)) {
       //Return location of variable value
       return sTable.getLocation(node.name);
@@ -239,7 +244,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
     //Add NULL string terminator
     hexData += "00";
     //Allocate heap space and return placeholder addr
-    return memTable.allocateHeap(hexData);
+    return memManager.allocateHeap(hexData);
   }
 
   function parsePrint(node: TNode, sTable: SymbolTable) {
@@ -251,11 +256,19 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
         //Load Y register with result of ADD stored in addr
         //Set X to 01, call SYS to print
         byteCode.push("AC",addr[0],addr[1],"A2","01","FF");
+        memManager.allowOverwrite(addr);
       } else if (child.name === "CHARLIST") {
           //Print CharList
           let addr = parseCharList(child);
           //Load addr into Y register, set X to 02 and call SYS to print
           byteCode.push("A0",addr,"A2","02","FF");
+      } else if (child.name === "BOOL_EXPR") {
+        //Evaulate BoolExpr, store result
+        let addr = evalStoreBool(child, sTable);
+        //Print result
+        byteCode.push("AC",addr[0],addr[1],"A2","01","FF");
+        //Release memory
+        memManager.allowOverwrite(addr);
       }
     } else {
       switch (child.token.name) {
@@ -304,9 +317,9 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
     if (/$[a-z]^/.test(results[1])) {
       //The last element is an ID
       let varLoc = sTable.getLocation(results[1]);
-      let resLoc = memTable.allocateStatic();
+      let resLoc = memManager.allocateStatic();
       //Load accumulated num into Acc, then add value stored in the variable
-      byteCode.push("A9",results[0].toString(16),"6D",varLoc[0],varLoc[1]);
+      byteCode.push("A9",results[0].toString(16).padStart(2, "0"),"6D",varLoc[0],varLoc[1]);
       //Store the result in memory, return the location
       byteCode.push("8D",resLoc[0],resLoc[1]);
       return resLoc;
@@ -317,9 +330,9 @@ function genCode(AST: TNode, sTree: SymbolTable, memTable: MemoryTable): string[
         throw error("Integer Overflow: result of calculation exceeds maximum " +
                     "storage for integer (1 byte)");
       }
-      let addr = memTable.allocateStatic();
+      let addr = memManager.allocateStatic();
       //Load the result into Acc, store in memory, return the location
-      byteCode.push("A9",num.toString(16),"8D",addr[0],addr[1]);
+      byteCode.push("A9",num.toString(16).padStart(2, "0"),"8D",addr[0],addr[1]);
       return addr;
     }
 

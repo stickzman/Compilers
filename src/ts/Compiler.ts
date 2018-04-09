@@ -30,7 +30,7 @@ function compile() {
 
   let lineCount = 1;
   let colCount = 0;
-  let memTable: MemoryTable = new MemoryTable();
+  let memTable: MemoryManager = new MemoryManager();
   let byteCode: string[] = [];
   for (let i = 0; i < pgrms.length; i++) {
     Log.pgrmSeparater();

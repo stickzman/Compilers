@@ -1,7 +1,8 @@
 /// <reference path="Helper.ts"/>
 
-class MemoryTable {
+class MemoryManager {
   private heap: HashTable = {};
+  private dirtyMemory: string[] = [];
   private staticTable: HashTable = {};
   private staticLength = 0;
   private heapLength = 0;
@@ -13,7 +14,11 @@ class MemoryTable {
   }
 
   //Allocate new static memory. Return name of placeholder addr
-  public allocateStatic(): string[] {
+  public allocateStatic(allowDirty: boolean = true): string[] {
+    if (allowDirty && this.dirtyMemory.length > 0) {
+      let addr = this.dirtyMemory.shift();
+      return addr.split(" ");
+    }
     //Create placeholder address
     let addr = "S" + this.staticLength.toString().padStart(3, "0");
     this.staticLength++;
@@ -27,6 +32,15 @@ class MemoryTable {
     let addr = "H" + this.heapLength++; //Create placeholder address
     this.heap[addr] = {data: hexData, loc: ""};
     return addr;
+  }
+
+  public allowOverwrite(addr: string[]) {
+    if (addr !== null && addr.length === 2) {
+      let loc = addr.join(" ");
+      if (this.dirtyMemory.indexOf(loc) === -1) {
+        this.dirtyMemory.push(loc);
+      }
+    }
   }
 
 
