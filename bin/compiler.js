@@ -8,7 +8,12 @@ function genCode(AST, sTree, memManager, pgrmNum) {
     try {
         parseBlock(AST, tempRoot);
         Log.breakLine();
-        Log.print(`Program ${pgrmNum} compiled successfully with 0 errors.`, LogPri.INFO);
+        if (byteCode.length === 0) {
+            Log.print(`Program ${pgrmNum} has no machine code to generate.`, LogPri.INFO);
+        }
+        else {
+            Log.print(`Program ${pgrmNum} compiled successfully with 0 errors.`, LogPri.INFO);
+        }
         //Allow this program static memory to be overwrriten by future programs
         memManager.releaseAllStaticMem();
         return byteCode;
@@ -1737,6 +1742,18 @@ function analyze(token, pgrmNum) {
         Log.SemMsg("Adding While Loop to AST...");
         let node = branchNode("WHILE", parent);
         discard(["while"]);
+        if (token.symbol === "true") {
+            numWarns++;
+            Log.SemMsg(`Infinite Loop defined at line: ${token.line} col: ` +
+                `${token.col}`, LogPri.WARNING);
+        }
+        else if (token.symbol === "false") {
+            let line = token.next.line;
+            let col = token.next.col;
+            numWarns++;
+            Log.SemMsg("While Loop condition set to 'false', so the code block will "
+                + `never run at line: ${line} col: ${col}`, LogPri.WARNING);
+        }
         analyzeBoolExpr(node, scope);
         //Block to be run
         analyzeBlock(node, scope);

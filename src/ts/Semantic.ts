@@ -341,6 +341,17 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     Log.SemMsg("Adding While Loop to AST...");
     let node = branchNode("WHILE", parent);
     discard(["while"]);
+    if (token.symbol === "true") {
+      numWarns++;
+      Log.SemMsg(`Infinite Loop defined at line: ${token.line} col: `+
+                  `${token.col}`, LogPri.WARNING);
+    } else if (token.symbol === "false") {
+      let line = token.next.line;
+      let col = token.next.col;
+      numWarns++;
+      Log.SemMsg("While Loop condition set to 'false', so the code block will "
+                + `never run at line: ${line} col: ${col}`, LogPri.WARNING);
+    }
     analyzeBoolExpr(node, scope);
     //Block to be run
     analyzeBlock(node, scope);

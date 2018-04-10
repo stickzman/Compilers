@@ -13,7 +13,11 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     parseBlock(AST, tempRoot);
 
     Log.breakLine();
-    Log.print(`Program ${pgrmNum} compiled successfully with 0 errors.`, LogPri.INFO);
+    if (byteCode.length === 0) {
+      Log.print(`Program ${pgrmNum} has no machine code to generate.`, LogPri.INFO);
+    } else {
+      Log.print(`Program ${pgrmNum} compiled successfully with 0 errors.`, LogPri.INFO);
+    }
 
     //Allow this program static memory to be overwrriten by future programs
     memManager.releaseAllStaticMem();
