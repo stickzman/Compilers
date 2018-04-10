@@ -198,7 +198,7 @@ function genCode(AST, sTree, memManager, pgrmNum) {
     //evalulate BoolVal, Z flag will be set in byteCode after running
     function evalBoolVal(val) {
         Log.GenMsg(`Evaluating single boolVal '${val}'...`);
-        let addr = memManager.getRFalse();
+        let addr = memManager.getFalseVal();
         if (val === "true") {
             //Store "00" in X and compare with defualt "00" in memory
             byteCode.push("A2", "00", "EC", addr[0], addr[1]);
@@ -311,7 +311,7 @@ function genCode(AST, sTree, memManager, pgrmNum) {
     }
     function addUnconditionalBranch(jumpAmt) {
         //Set X to "01", compare with "false" value (00) in memory, compare, then BNE
-        let addr = memManager.getRFalse();
+        let addr = memManager.getFalseVal();
         byteCode.push("A2", "01", "EC", addr[0], addr[1], "D0", jumpAmt);
     }
     //Load the X register with the digit/boolean value in expr1 Node
@@ -360,7 +360,7 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         }
         else if (node.name === "false") {
             //Location of default "00" (false)
-            return memManager.getRFalse();
+            return memManager.getFalseVal();
         }
         else if (/^[a-z]$/.test(node.name)) {
             //Return location of variable value
@@ -434,10 +434,12 @@ function genCode(AST, sTree, memManager, pgrmNum) {
                 case "BOOLVAL":
                     //Print true/false
                     if (child.token.symbol === "true") {
-                        byteCode.push("A0", "01", "A2", "01", "FF");
+                        let addr = memManager.getTrueString();
+                        byteCode.push("AC", addr[0], addr[1], "A2", "02", "FF");
                     }
                     else {
-                        byteCode.push("A0", "00", "A2", "01", "FF");
+                        let addr = memManager.getFalseString();
+                        byteCode.push("AC", addr[0], addr[1], "A2", "02", "FF");
                     }
                     break;
                 default:
@@ -572,7 +574,6 @@ function compile() {
     //Perform backpatching and display machine code
     byteCode.push("00");
     try {
-        memTable.correct(byteCode.length);
         Log.breakLine(LogPri.VERBOSE);
         Log.dottedLine(LogPri.VERBOSE);
         let code = memTable.backpatch(byteCode);
@@ -1064,13 +1065,29 @@ class MemoryManager {
         this.staticLength = 0;
         this.heapLength = 0;
     }
-    getRFalse() {
+    getFalseVal() {
         if (this.reservedTable["FV XX"] === undefined) {
             //Initialize a static memory address that will hold a 00
             //Used as a "false" value for unconditional branching
-            this.reservedTable["FV XX"] = "";
+            this.reservedTable["FV XX"] = { loc: "", data: "00" };
         }
         return ["FV", "XX"];
+    }
+    getFalseString() {
+        if (this.reservedTable["FS XX"] === undefined) {
+            //Add hexdata for "false" string in heap. Store pointer in reservedTable
+            let addr = this.allocateHeap("66 61 6C 73 65 00");
+            this.reservedTable["FS XX"] = { loc: "", data: addr };
+        }
+        return ["FS", "XX"];
+    }
+    getTrueString() {
+        if (this.reservedTable["TS XX"] === undefined) {
+            //Add hexdata for "true" string in heap. Store pointer in reservedTable
+            let addr = this.allocateHeap("74 72 75 65 00");
+            this.reservedTable["TS XX"] = { loc: "", data: addr };
+        }
+        return ["TS", "XX"];
     }
     //Allocate new static memory. Return name of placeholder addr
     allocateStatic(allowDirty = true) {
@@ -1121,31 +1138,33 @@ class MemoryManager {
         let keys = Object.keys(this.staticTable);
         this.dirtyMemory = this.dirtyMemory.concat(keys);
     }
-    //Assuming beta and offsets are base 10
-    //Will convert to base 16/memory addresses in function
-    correct(alpha) {
+    backpatch(byteArr) {
+        //Pad byteArr with zeros for static locations
         let staticKeys = Object.keys(this.staticTable);
         let resKeys = Object.keys(this.reservedTable);
+        let heapKeys = Object.keys(this.heap);
+        let alpha = byteArr.length;
         let beta = alpha + staticKeys.length + resKeys.length;
-        if (beta > 256) {
+        if (beta + heapKeys.length > 256) {
             throw this.error();
         }
         let hex;
-        //Convert locations of reserved memory
-        for (let i = 0; i < resKeys.length; i++) {
-            hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
-            //Swap the order of bytes to reflect the addressing scheme in 6502a
-            this.reservedTable[resKeys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
-        }
-        alpha += resKeys.length;
-        //Convert memory locations of static table
         for (let i = 0; i < staticKeys.length; i++) {
+            //Convert to hex address
             hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
             //Swap the order of bytes to reflect the addressing scheme in 6502a
             this.staticTable[staticKeys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
+            //Add empty memory to byteCode
+            byteArr.push("00");
         }
-        //Convert memory locations of heap
-        let heapKeys = Object.keys(this.heap);
+        for (let i = 0; i < resKeys.length; i++) {
+            //Convert to hex address
+            hex = (alpha + staticKeys.length + i).toString(16).padStart(4, "0").toUpperCase();
+            //Swap the order of bytes to reflect the addressing scheme in 6502a
+            this.reservedTable[resKeys[i]].loc = hex.substr(2) + " " + hex.substr(0, 2);
+            //Add empty memory to byteCode
+            byteArr.push(this.reservedTable[resKeys[i]].data);
+        }
         let offset = 0;
         for (let key of heapKeys) {
             this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0").toUpperCase();
@@ -1154,27 +1173,20 @@ class MemoryManager {
         if (beta + offset > 256) {
             throw this.error();
         }
-    }
-    backpatch(byteArr) {
-        //Pad byteArr with zeros for static locations
-        let staticKeys = Object.keys(this.staticTable);
-        let reservedKeys = Object.keys(this.reservedTable);
-        let totalStaticLen = staticKeys.length + reservedKeys.length;
-        for (let i = 0; i < totalStaticLen; i++) {
-            byteArr.push("00");
-        }
-        //Add heap data to end of byteArr
-        let heapKeys = Object.keys(this.heap);
-        for (let key of heapKeys) {
-            byteArr = byteArr.concat(this.heap[key].data.split(" "));
-        }
         let code = byteArr.join(" ");
         let regExp;
-        //Backpatch reserved locations
-        for (let key of reservedKeys) {
-            Log.print(`Backpatching '${key}' to '${this.reservedTable[key]}'...`, LogPri.VERBOSE);
+        //Add heap to code and backpatch
+        for (let key of heapKeys) {
+            code += " " + this.heap[key].data;
+            Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`, LogPri.VERBOSE);
             regExp = new RegExp(key, 'g');
-            code = code.replace(regExp, this.reservedTable[key]);
+            code = code.replace(regExp, this.heap[key].loc);
+        }
+        //Backpatch reserved locations
+        for (let key of resKeys) {
+            Log.print(`Backpatching '${key}' to '${this.reservedTable[key].loc}'...`, LogPri.VERBOSE);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.reservedTable[key].loc);
         }
         //Backpatch static locations
         for (let key of staticKeys) {
@@ -1182,13 +1194,7 @@ class MemoryManager {
             regExp = new RegExp(key, 'g');
             code = code.replace(regExp, this.staticTable[key]);
         }
-        //Backpatch heap locations
-        for (let key of heapKeys) {
-            Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`, LogPri.VERBOSE);
-            regExp = new RegExp(key, 'g');
-            code = code.replace(regExp, this.heap[key].loc);
-        }
-        //Backpatch Jump Points
+        //Backpatch jump locations
         let jumpKeys = Object.keys(this.jumpTable);
         for (let key of jumpKeys) {
             let addr;

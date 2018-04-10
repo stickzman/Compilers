@@ -76,7 +76,6 @@ function compile() {
   //Perform backpatching and display machine code
   byteCode.push("00");
   try {
-    memTable.correct(byteCode.length);
     Log.breakLine(LogPri.VERBOSE);
     Log.dottedLine(LogPri.VERBOSE);
     let code = memTable.backpatch(byteCode);
