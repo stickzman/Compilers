@@ -198,13 +198,14 @@ function genCode(AST, sTree, memManager, pgrmNum) {
     //evalulate BoolVal, Z flag will be set in byteCode after running
     function evalBoolVal(val) {
         Log.GenMsg(`Evaluating single boolVal '${val}'...`);
+        let addr = memManager.getRFalse();
         if (val === "true") {
             //Store "00" in X and compare with defualt "00" in memory
-            byteCode.push("A2", "00", "EC", "FV", "XX");
+            byteCode.push("A2", "00", "EC", addr[0], addr[1]);
         }
         if (val === "false") {
             //Store "01" in X and compare with defualt "00" in memory
-            byteCode.push("A2", "01", "EC", "FV", "XX");
+            byteCode.push("A2", "01", "EC", addr[0], addr[1]);
         }
     }
     //evalulate Bool_Expr, Z flag will be set in byteCode after running
@@ -310,7 +311,8 @@ function genCode(AST, sTree, memManager, pgrmNum) {
     }
     function addUnconditionalBranch(jumpAmt) {
         //Set X to "01", compare with "false" value (00) in memory, compare, then BNE
-        byteCode.push("A2", "01", "EC", "FV", "XX", "D0", jumpAmt);
+        let addr = memManager.getRFalse();
+        byteCode.push("A2", "01", "EC", addr[0], addr[1], "D0", jumpAmt);
     }
     //Load the X register with the digit/boolean value in expr1 Node
     function loadX(node, sTable) {
@@ -358,7 +360,7 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         }
         else if (node.name === "false") {
             //Location of default "00" (false)
-            return ["FV", "XX"];
+            return memManager.getRFalse();
         }
         else if (/^[a-z]$/.test(node.name)) {
             //Return location of variable value
@@ -557,9 +559,19 @@ function compile() {
     memTable.correct(byteCode.length);
     Log.breakLine(LogPri.VERBOSE);
     Log.dottedLine(LogPri.VERBOSE);
-    let code = memTable.backpatch(byteCode);
-    hexDisplay.value = code.padEnd(512, " 00").toUpperCase();
-    hexDiv.style.display = "block";
+    try {
+        let code = memTable.backpatch(byteCode);
+        hexDisplay.value = code.padEnd(512, " 00").toUpperCase();
+        hexDiv.style.display = "block";
+    }
+    catch (e) {
+        if (e.name === "Pgrm_Overflow") {
+            Log.print("ERROR: " + e.message, LogPri.ERROR);
+        }
+        else {
+            throw e;
+        }
+    }
 }
 //All test cases names and source code to be displayed in console panel
 let tests = {
@@ -1028,14 +1040,20 @@ class MemoryManager {
     constructor() {
         this.heap = {};
         this.dirtyMemory = [];
+        this.reservedTable = {};
         this.staticTable = {};
         this.jumpTable = {};
         this.jumpTableLen = 0;
         this.staticLength = 0;
         this.heapLength = 0;
-        //Initialize a static memory address that will hold a 00
-        //Used as a "false" value for unconditional branching
-        this.staticTable["FV XX"] = "";
+    }
+    getRFalse() {
+        if (this.reservedTable["FV XX"] === undefined) {
+            //Initialize a static memory address that will hold a 00
+            //Used as a "false" value for unconditional branching
+            this.staticTable["FV XX"] = "";
+        }
+        return ["FV", "XX"];
     }
     //Allocate new static memory. Return name of placeholder addr
     allocateStatic(allowDirty = true) {
@@ -1094,12 +1112,21 @@ class MemoryManager {
         if (beta > 256) {
             throw this.error();
         }
-        //Convert memory locations of static table
         let hex;
+        //Convert memory locations of static table
         for (let i = 0; i < keys.length; i++) {
             hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
             //Swap the order of bytes to reflect the addressing scheme in 6502a
             this.staticTable[keys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
+        }
+        //Convert locations of reserved memory
+        let j = alpha + keys.length;
+        keys = Object.keys(this.reservedTable);
+        for (let key of keys) {
+            hex = j.toString(16).padStart(4, "0").toUpperCase();
+            //Swap the order of bytes to reflect the addressing scheme in 6502a
+            this.reservedTable[key] = hex.substr(2) + " " + hex.substr(0, 2);
+            j++;
         }
         //Convert memory locations of heap
         keys = Object.keys(this.heap);
@@ -1115,7 +1142,9 @@ class MemoryManager {
     backpatch(byteArr) {
         //Pad byteArr with zeros for static locations
         let staticKeys = Object.keys(this.staticTable);
-        for (let key of staticKeys) {
+        let reservedKeys = Object.keys(this.reservedTable);
+        let totalStaticLen = staticKeys.length + reservedKeys.length;
+        for (let i = 0; i < totalStaticLen; i++) {
             byteArr.push("00");
         }
         //Add heap data to end of byteArr
@@ -1124,8 +1153,14 @@ class MemoryManager {
             byteArr = byteArr.concat(this.heap[key].data.split(" "));
         }
         let code = byteArr.join(" ");
-        //Backpatch static locations
         let regExp;
+        //Backpatch reserved locations
+        for (let key of reservedKeys) {
+            Log.print(`Backpatching '${key}' to '${this.reservedTable[key]}'...`, LogPri.VERBOSE);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.reservedTable[key]);
+        }
+        //Backpatch static locations
         for (let key of staticKeys) {
             Log.print(`Backpatching '${key}' to '${this.staticTable[key]}'...`, LogPri.VERBOSE);
             regExp = new RegExp(key, 'g');
@@ -1154,6 +1189,9 @@ class MemoryManager {
             Log.print(`Backpatching '${key}' to '${addr}'...`, LogPri.VERBOSE);
             regExp = new RegExp(key, 'g');
             code = code.replace(regExp, addr);
+        }
+        if (code.length > 512) {
+            throw this.error();
         }
         return code;
     }

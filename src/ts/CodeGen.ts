@@ -208,13 +208,14 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
   //evalulate BoolVal, Z flag will be set in byteCode after running
   function evalBoolVal(val: string) {
     Log.GenMsg(`Evaluating single boolVal '${val}'...`);
+    let addr = memManager.getRFalse();
     if (val === "true") {
       //Store "00" in X and compare with defualt "00" in memory
-      byteCode.push("A2","00","EC","FV","XX");
+      byteCode.push("A2","00","EC",addr[0],addr[1]);
     }
     if (val === "false") {
       //Store "01" in X and compare with defualt "00" in memory
-      byteCode.push("A2","01","EC","FV","XX");
+      byteCode.push("A2","01","EC",addr[0],addr[1]);
     }
   }
 
@@ -317,7 +318,8 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
 
   function addUnconditionalBranch(jumpAmt: string) {
     //Set X to "01", compare with "false" value (00) in memory, compare, then BNE
-    byteCode.push("A2","01","EC","FV","XX","D0",jumpAmt);
+    let addr = memManager.getRFalse();
+    byteCode.push("A2","01","EC",addr[0],addr[1],"D0",jumpAmt);
   }
 
   //Load the X register with the digit/boolean value in expr1 Node
@@ -360,7 +362,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       return addr;
     } else if (node.name === "false") {
       //Location of default "00" (false)
-      return ["FV","XX"];
+      return memManager.getRFalse();
     } else if (/^[a-z]$/.test(node.name)) {
       //Return location of variable value
       return sTable.getLocation(node.name);

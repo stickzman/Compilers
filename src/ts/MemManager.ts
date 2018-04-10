@@ -3,16 +3,22 @@
 class MemoryManager {
   private heap: HashTable = {};
   private dirtyMemory: string[] = [];
+  private reservedTable: HashTable = {};
   private staticTable: HashTable = {};
   private jumpTable: HashTable = {};
   private jumpTableLen = 0;
   private staticLength = 0;
   private heapLength = 0;
 
-  constructor() {
-    //Initialize a static memory address that will hold a 00
-    //Used as a "false" value for unconditional branching
-    this.staticTable["FV XX"] = "";
+  constructor() { }
+
+  public getRFalse(): [string, string] {
+    if (this.reservedTable["FV XX"] === undefined) {
+      //Initialize a static memory address that will hold a 00
+      //Used as a "false" value for unconditional branching
+      this.staticTable["FV XX"] = "";
+    }
+    return ["FV","XX"];
   }
 
   //Allocate new static memory. Return name of placeholder addr
@@ -80,12 +86,21 @@ class MemoryManager {
     if (beta > 256) {
       throw this.error();
     }
-    //Convert memory locations of static table
     let hex;
+    //Convert memory locations of static table
     for (let i = 0; i < keys.length; i++) {
       hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
       //Swap the order of bytes to reflect the addressing scheme in 6502a
       this.staticTable[keys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
+    }
+    //Convert locations of reserved memory
+    let j = alpha + keys.length;
+    keys = Object.keys(this.reservedTable);
+    for (let key of keys) {
+      hex = j.toString(16).padStart(4, "0").toUpperCase();
+      //Swap the order of bytes to reflect the addressing scheme in 6502a
+      this.reservedTable[key] = hex.substr(2) + " " + hex.substr(0, 2);
+      j++;
     }
     //Convert memory locations of heap
     keys = Object.keys(this.heap);
@@ -102,7 +117,9 @@ class MemoryManager {
   public backpatch(byteArr: string[]): string {
     //Pad byteArr with zeros for static locations
     let staticKeys = Object.keys(this.staticTable);
-    for (let key of staticKeys) {
+    let reservedKeys = Object.keys(this.reservedTable);
+    let totalStaticLen = staticKeys.length + reservedKeys.length;
+    for (let i = 0; i < totalStaticLen; i++) {
       byteArr.push("00");
     }
     //Add heap data to end of byteArr
@@ -111,8 +128,14 @@ class MemoryManager {
       byteArr = byteArr.concat(this.heap[key].data.split(" "));
     }
     let code = byteArr.join(" ");
-    //Backpatch static locations
     let regExp: RegExp;
+    //Backpatch reserved locations
+    for (let key of reservedKeys) {
+      Log.print(`Backpatching '${key}' to '${this.reservedTable[key]}'...`, LogPri.VERBOSE);
+      regExp = new RegExp(key, 'g');
+      code = code.replace(regExp, this.reservedTable[key]);
+    }
+    //Backpatch static locations
     for (let key of staticKeys) {
       Log.print(`Backpatching '${key}' to '${this.staticTable[key]}'...`, LogPri.VERBOSE);
       regExp = new RegExp(key, 'g');
@@ -138,6 +161,9 @@ class MemoryManager {
       Log.print(`Backpatching '${key}' to '${addr}'...`, LogPri.VERBOSE);
       regExp = new RegExp(key, 'g');
       code = code.replace(regExp, addr);
+    }
+    if (code.length > 512) {
+      throw this.error();
     }
     return code;
   }

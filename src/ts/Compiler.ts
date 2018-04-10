@@ -59,7 +59,15 @@ function compile() {
   memTable.correct(byteCode.length);
   Log.breakLine(LogPri.VERBOSE);
   Log.dottedLine(LogPri.VERBOSE);
-  let code = memTable.backpatch(byteCode);
-  hexDisplay.value = code.padEnd(512, " 00").toUpperCase();
-  hexDiv.style.display = "block";
+  try {
+    let code = memTable.backpatch(byteCode);
+    hexDisplay.value = code.padEnd(512, " 00").toUpperCase();
+    hexDiv.style.display = "block";
+  } catch (e) {
+    if (e.name === "Pgrm_Overflow") {
+      Log.print("ERROR: " + e.message, LogPri.ERROR);
+    } else {
+      throw e;
+    }
+  }
 }
