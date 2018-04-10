@@ -1068,7 +1068,7 @@ class MemoryManager {
         if (this.reservedTable["FV XX"] === undefined) {
             //Initialize a static memory address that will hold a 00
             //Used as a "false" value for unconditional branching
-            this.staticTable["FV XX"] = "";
+            this.reservedTable["FV XX"] = "";
         }
         return ["FV", "XX"];
     }
@@ -1124,31 +1124,30 @@ class MemoryManager {
     //Assuming beta and offsets are base 10
     //Will convert to base 16/memory addresses in function
     correct(alpha) {
-        let keys = Object.keys(this.staticTable);
-        let beta = alpha + keys.length;
+        let staticKeys = Object.keys(this.staticTable);
+        let resKeys = Object.keys(this.reservedTable);
+        let beta = alpha + staticKeys.length + resKeys.length;
         if (beta > 256) {
             throw this.error();
         }
         let hex;
-        //Convert memory locations of static table
-        for (let i = 0; i < keys.length; i++) {
+        //Convert locations of reserved memory
+        for (let i = 0; i < resKeys.length; i++) {
             hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
             //Swap the order of bytes to reflect the addressing scheme in 6502a
-            this.staticTable[keys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
+            this.reservedTable[resKeys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
         }
-        //Convert locations of reserved memory
-        let j = alpha + keys.length;
-        keys = Object.keys(this.reservedTable);
-        for (let key of keys) {
-            hex = j.toString(16).padStart(4, "0").toUpperCase();
+        alpha += resKeys.length;
+        //Convert memory locations of static table
+        for (let i = 0; i < staticKeys.length; i++) {
+            hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
             //Swap the order of bytes to reflect the addressing scheme in 6502a
-            this.reservedTable[key] = hex.substr(2) + " " + hex.substr(0, 2);
-            j++;
+            this.staticTable[staticKeys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
         }
         //Convert memory locations of heap
-        keys = Object.keys(this.heap);
+        let heapKeys = Object.keys(this.heap);
         let offset = 0;
-        for (let key of keys) {
+        for (let key of heapKeys) {
             this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0").toUpperCase();
             offset += this.heap[key].data.split(" ").length;
         }
@@ -1183,7 +1182,7 @@ class MemoryManager {
             regExp = new RegExp(key, 'g');
             code = code.replace(regExp, this.staticTable[key]);
         }
-        //Backpatch static locations
+        //Backpatch heap locations
         for (let key of heapKeys) {
             Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`, LogPri.VERBOSE);
             regExp = new RegExp(key, 'g');
