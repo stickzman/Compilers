@@ -499,7 +499,7 @@ function updateDisplay() {
     let hexDisplay = document.getElementById("hexCode");
     hexDisplay.value = "";
     //Call compile with a timeout to allow the display changes to take affect
-    setTimeout(compile, 10);
+    setTimeout(compile, 30);
 }
 function compile() {
     //Get source code
