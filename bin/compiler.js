@@ -491,10 +491,22 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         return e;
     }
 }
+function updateDisplay() {
+    let source = document.getElementById("source").value;
+    let hexDiv = document.getElementById("hexDiv");
+    let loadDiv = document.getElementById("loading");
+    loadDiv.style.display = "block";
+    hexDiv.style.display = "none";
+    let hexDisplay = document.getElementById("hexCode");
+    hexDisplay.value = "";
+    setTimeout(compile, 10);
+}
 function compile() {
     //Get source code
     let source = document.getElementById("source").value;
     let hexDiv = document.getElementById("hexDiv");
+    let loadDiv = document.getElementById("loading");
+    loadDiv.style.display = "block";
     hexDiv.style.display = "none";
     let hexDisplay = document.getElementById("hexCode");
     hexDisplay.value = "";
@@ -552,14 +564,15 @@ function compile() {
         byteCode = byteCode.concat(codeArr);
     }
     if (byteCode.length === 0) {
+        loadDiv.style.display = "none";
         return;
     }
     //Perform backpatching and display machine code
     byteCode.push("00");
-    memTable.correct(byteCode.length);
-    Log.breakLine(LogPri.VERBOSE);
-    Log.dottedLine(LogPri.VERBOSE);
     try {
+        memTable.correct(byteCode.length);
+        Log.breakLine(LogPri.VERBOSE);
+        Log.dottedLine(LogPri.VERBOSE);
         let code = memTable.backpatch(byteCode);
         hexDisplay.value = code.padEnd(512, " 00").toUpperCase();
         hexDiv.style.display = "block";
@@ -567,11 +580,13 @@ function compile() {
     catch (e) {
         if (e.name === "Pgrm_Overflow") {
             Log.print("ERROR: " + e.message, LogPri.ERROR);
+            loadDiv.style.display = "none";
         }
         else {
             throw e;
         }
     }
+    loadDiv.style.display = "none";
 }
 //All test cases names and source code to be displayed in console panel
 let tests = {

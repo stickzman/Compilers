@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+<link rel="stylesheet" href="style.css">
 <script type="text/javascript" src="bin/compiler.js"></script>
 
 <body onload="init()">
@@ -49,6 +50,13 @@
 				</div>
 			</div>
 		</div>
+		<div id="loading" style="display: none">
+			<div class="row pt-2 pb-1">
+				<div class="col" align="center">
+					<span>Working... </span><div class="loader"></div>
+				</div>
+			</div>
+		</div>
 		<div id="hexDiv" style="display: none">
 			<div class="row pt-2 pb-1">
 				<div class="col">
@@ -71,7 +79,7 @@
 		</div>
 		<div class="row pt-3">
 			<div class="col">
-				<button id="compileBtn" class="form-control btn-success" onclick="compile()">Compile</button>
+				<button id="compileBtn" class="form-control btn-success" onclick="updateDisplay()">Compile</button>
 			</div>
 		</div>
 	</div>
