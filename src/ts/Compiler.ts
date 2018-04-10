@@ -1,5 +1,4 @@
 function updateDisplay() {
-  let source = (<HTMLInputElement>document.getElementById("source")).value;
   let hexDiv = document.getElementById("hexDiv");
   let loadDiv = document.getElementById("loading");
   loadDiv.style.display = "block";
@@ -7,6 +6,7 @@ function updateDisplay() {
   let hexDisplay = <HTMLInputElement>document.getElementById("hexCode");
   hexDisplay.value = "";
 
+  //Call compile with a timeout to allow the display changes to take affect
   setTimeout(compile, 10);
 }
 
@@ -15,10 +15,12 @@ function compile() {
   let source = (<HTMLInputElement>document.getElementById("source")).value;
   let hexDiv = document.getElementById("hexDiv");
   let loadDiv = document.getElementById("loading");
+  let hexDisplay = <HTMLInputElement>document.getElementById("hexCode");
+  /*
   loadDiv.style.display = "block";
   hexDiv.style.display = "none";
-  let hexDisplay = <HTMLInputElement>document.getElementById("hexCode");
   hexDisplay.value = "";
+  */
 
   Log.clear();
 

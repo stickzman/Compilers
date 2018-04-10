@@ -33,7 +33,7 @@ function init() {
     //F2 compiles Program
     if (e.keyCode === 113) {
       e.preventDefault();
-      compile();
+      updateDisplay();
     }
   });
   //Add event listeners to Console element

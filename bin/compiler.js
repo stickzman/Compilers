@@ -492,13 +492,13 @@ function genCode(AST, sTree, memManager, pgrmNum) {
     }
 }
 function updateDisplay() {
-    let source = document.getElementById("source").value;
     let hexDiv = document.getElementById("hexDiv");
     let loadDiv = document.getElementById("loading");
     loadDiv.style.display = "block";
     hexDiv.style.display = "none";
     let hexDisplay = document.getElementById("hexCode");
     hexDisplay.value = "";
+    //Call compile with a timeout to allow the display changes to take affect
     setTimeout(compile, 10);
 }
 function compile() {
@@ -506,10 +506,12 @@ function compile() {
     let source = document.getElementById("source").value;
     let hexDiv = document.getElementById("hexDiv");
     let loadDiv = document.getElementById("loading");
+    let hexDisplay = document.getElementById("hexCode");
+    /*
     loadDiv.style.display = "block";
     hexDiv.style.display = "none";
-    let hexDisplay = document.getElementById("hexCode");
     hexDisplay.value = "";
+    */
     Log.clear();
     //Split source code of programs
     let pgrms = source.split("$");
@@ -642,7 +644,7 @@ function init() {
         //F2 compiles Program
         if (e.keyCode === 113) {
             e.preventDefault();
-            compile();
+            updateDisplay();
         }
     });
     //Add event listeners to Console element
