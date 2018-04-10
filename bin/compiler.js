@@ -380,6 +380,30 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         //Allocate heap space and return placeholder addr
         return memManager.allocateHeap(hexData);
     }
+    //Assuming Z is set with result of evaulation, prints "true"/"false"
+    //isEqual denotes whether the boolOp was == or not
+    function printEvalResult(isEqual = true) {
+        let truAddr = memManager.getTrueString();
+        let falseAddr = memManager.getFalseString();
+        byteCode.push("D0", "0D", "A2", "02", "AC");
+        if (isEqual) {
+            byteCode.push(truAddr[0], truAddr[1]);
+        }
+        else {
+            byteCode.push(falseAddr[0], falseAddr[1]);
+        }
+        byteCode.push("FF");
+        //Jump to rest of program
+        addUnconditionalBranch("06");
+        byteCode.push("A2", "02", "AC");
+        if (isEqual) {
+            byteCode.push(falseAddr[0], falseAddr[1]);
+        }
+        else {
+            byteCode.push(truAddr[0], truAddr[1]);
+        }
+        byteCode.push("FF");
+    }
     function parsePrint(node, sTable) {
         Log.GenMsg("Parsing Print Statement...");
         let child = node.children[0];
@@ -399,12 +423,10 @@ function genCode(AST, sTree, memManager, pgrmNum) {
                 byteCode.push("A0", addr, "A2", "02", "FF");
             }
             else if (child.name === "BOOL_EXPR") {
-                //Evaulate BoolExpr, store result
-                let addr = evalStoreBool(child, sTable);
+                //Evaulate BoolExpr
+                let isEqual = evalBoolExpr(child, sTable);
                 //Print result
-                byteCode.push("AC", addr[0], addr[1], "A2", "01", "FF");
-                //Release memory
-                memManager.allowOverwrite(addr);
+                printEvalResult(isEqual);
             }
         }
         else {
@@ -426,9 +448,13 @@ function genCode(AST, sTree, memManager, pgrmNum) {
                             byteCode.push("AC", addr[0], addr[1], "A2", "01", "FF");
                             break;
                         case "BOOLEAN":
-                            //Load bool into Y register, set X to 01 and call SYS to print
-                            byteCode.push("AC", addr[0], addr[1], "A2", "01", "FF");
-                            break;
+                            {
+                                //Evaulate Boolean, print result
+                                //Compare val of variable with "true"
+                                byteCode.push("A2", "01", "EC", addr[0], addr[1]);
+                                printEvalResult(true);
+                                break;
+                            }
                     }
                     break;
                 case "BOOLVAL":
@@ -577,7 +603,7 @@ function compile() {
         Log.breakLine(LogPri.VERBOSE);
         Log.dottedLine(LogPri.VERBOSE);
         let code = memTable.backpatch(byteCode);
-        hexDisplay.value = code.padEnd(512, " 00").toUpperCase();
+        hexDisplay.value = code.padEnd(767, " 00").toUpperCase();
         hexDiv.style.display = "block";
     }
     catch (e) {
@@ -1212,7 +1238,7 @@ class MemoryManager {
             regExp = new RegExp(key, 'g');
             code = code.replace(regExp, addr);
         }
-        if (code.length > 512) {
+        if (code.length > 767) {
             throw this.error();
         }
         return code;

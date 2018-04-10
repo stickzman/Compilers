@@ -79,7 +79,7 @@ function compile() {
     Log.breakLine(LogPri.VERBOSE);
     Log.dottedLine(LogPri.VERBOSE);
     let code = memTable.backpatch(byteCode);
-    hexDisplay.value = code.padEnd(512, " 00").toUpperCase();
+    hexDisplay.value = code.padEnd(767, " 00").toUpperCase();
     hexDiv.style.display = "block";
   } catch (e) {
     if (e.name === "Pgrm_Overflow") {

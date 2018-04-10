@@ -166,7 +166,7 @@ class MemoryManager {
       regExp = new RegExp(key, 'g');
       code = code.replace(regExp, addr);
     }
-    if (code.length > 512) {
+    if (code.length > 767) {
       throw this.error();
     }
     return code;

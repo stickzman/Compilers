@@ -383,6 +383,29 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     return memManager.allocateHeap(hexData);
   }
 
+  //Assuming Z is set with result of evaulation, prints "true"/"false"
+  //isEqual denotes whether the boolOp was == or not
+  function printEvalResult(isEqual: boolean = true) {
+    let truAddr = memManager.getTrueString();
+    let falseAddr = memManager.getFalseString();
+    byteCode.push("D0","0D","A2","02","AC");
+    if (isEqual) {
+      byteCode.push(truAddr[0],truAddr[1]);
+    } else {
+      byteCode.push(falseAddr[0],falseAddr[1]);
+    }
+    byteCode.push("FF");
+    //Jump to rest of program
+    addUnconditionalBranch("06");
+    byteCode.push("A2","02","AC");
+    if (isEqual) {
+      byteCode.push(falseAddr[0],falseAddr[1]);
+    } else {
+      byteCode.push(truAddr[0],truAddr[1]);
+    }
+    byteCode.push("FF");
+  }
+
   function parsePrint(node: TNode, sTable: SymbolTable) {
     Log.GenMsg("Parsing Print Statement...");
     let child = <TNode>node.children[0];
@@ -400,12 +423,10 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
           //Load addr into Y register, set X to 02 and call SYS to print
           byteCode.push("A0",addr,"A2","02","FF");
       } else if (child.name === "BOOL_EXPR") {
-        //Evaulate BoolExpr, store result
-        let addr = evalStoreBool(child, sTable);
+        //Evaulate BoolExpr
+        let isEqual = evalBoolExpr(child, sTable);
         //Print result
-        byteCode.push("AC",addr[0],addr[1],"A2","01","FF");
-        //Release memory
-        memManager.allowOverwrite(addr);
+        printEvalResult(isEqual);
       }
     } else {
       switch (child.token.name) {
@@ -426,9 +447,13 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
               byteCode.push("AC",addr[0],addr[1],"A2","01","FF");
               break;
             case "BOOLEAN":
-              //Load bool into Y register, set X to 01 and call SYS to print
-              byteCode.push("AC",addr[0],addr[1],"A2","01","FF");
+            {
+              //Evaulate Boolean, print result
+              //Compare val of variable with "true"
+              byteCode.push("A2","01","EC",addr[0],addr[1]);
+              printEvalResult(true);
               break;
+            }
           }
           break;
         case "BOOLVAL":
