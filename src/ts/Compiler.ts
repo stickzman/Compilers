@@ -84,10 +84,12 @@ function compile() {
   } catch (e) {
     if (e.name === "Pgrm_Overflow") {
       Log.print("ERROR: " + e.message, LogPri.ERROR);
+      Log.scrollToBottom();
       loadDiv.style.display = "none";
     } else {
       throw e;
     }
   }
+  Log.scrollToBottom();
   loadDiv.style.display = "none";
 }

@@ -609,12 +609,14 @@ function compile() {
     catch (e) {
         if (e.name === "Pgrm_Overflow") {
             Log.print("ERROR: " + e.message, LogPri.ERROR);
+            Log.scrollToBottom();
             loadDiv.style.display = "none";
         }
         else {
             throw e;
         }
     }
+    Log.scrollToBottom();
     loadDiv.style.display = "none";
 }
 //All test cases names and source code to be displayed in console panel
@@ -984,9 +986,11 @@ class Log {
     static print(msg, priority = LogPri.INFO) {
         if (priority >= Log.level) {
             Log.logElem.value += " " + msg + "\n";
-            //Scroll Log to bottom bottom when updating
-            Log.logElem.scrollTop = Log.logElem.scrollHeight;
         }
+    }
+    static scrollToBottom() {
+        //Scroll Log to bottom bottom when updating
+        Log.logElem.scrollTop = Log.logElem.scrollHeight;
     }
     static clear() {
         Log.logElem.value = "";
