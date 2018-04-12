@@ -7,7 +7,7 @@ let tests = {
   "Simple Test 2":
     "/* Print Operation */\n{\n\tprint(\"the cake is a lie\")\n}$",
   "Simple Test 3":
-    "{\n    int a \n    boolean b \n    {\n        string c\n        a = 5 \n        b = true \n        c = \"inta\"\n        print(c)\n    }\n    string c\n    c = \" \"\n    print(c)\n    print(b) \n    print(\" \")\n    print(a)\n}$",
+    "{\n    int a\n    boolean b\n    {\n        string c\n        a = 5\n        b = true\n        c = \"inta\"\n        print(c)\n    }\n    string c\n    c = \" \"\n    print(c)\n    print(b)\n    print(\" \")\n    print(a)\n}$",
   "Long Test Case":
     "/* Long Test Case */\n{\n\t/* Int Declaration */\n\tint a\n\tint b\n\n\ta = 0\n\tb = 0\n\n\t/* While Loop */\n\twhile (a != 3) {\n    \tprint(a)\n    \twhile (b != 3) {\n        \t\tprint(b)\n        \t\tb = 1 + b\n        \t\tif (b == 2) {\n\t\t\t        /* Print Statement */\n            \t\tprint(\"there is no spoon\"/* This will do nothing */)\n        \t\t}\n    \t}\n\n    \tb = 0\n    \ta = 1 + a\n\t}\n}$",
   "Long Test Case - ONE LINE":

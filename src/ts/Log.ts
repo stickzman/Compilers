@@ -23,9 +23,12 @@ class Log {
   public static print(msg: string, priority: LogPri = LogPri.INFO) {
     if (priority >= Log.level) {
       Log.logElem.value += " " + msg + "\n";
-      //Scroll Log to bottom bottom when updating
-      Log.logElem.scrollTop = Log.logElem.scrollHeight;
     }
+  }
+
+  public static scrollToBottom(){
+    //Scroll Log to bottom bottom when updating
+    Log.logElem.scrollTop = Log.logElem.scrollHeight;
   }
 
   public static clear() {
@@ -92,6 +95,12 @@ class Log {
     Log.print(str, priority);
   }
 
+  public static GenMsg(msg: string, priority: LogPri = LogPri.VERBOSE) {
+    let str = "CODE_GEN: ";
+    str += msg;
+    Log.print(str, priority);
+  }
+
   public static isClear(): boolean {
     return Log.logElem.value.replace(/[ \n]/g, "") == "";
   }
@@ -106,8 +115,8 @@ class Log {
     }
   }
 
-  public static breakLine() {
-    if (!Log.isLastLineClear()) Log.print("", LogPri.ERROR);
+  public static breakLine(pri: LogPri = LogPri.ERROR) {
+    if (!Log.isLastLineClear()) Log.print("", pri);
   }
 
   public static dottedLine(pri: LogPri) {

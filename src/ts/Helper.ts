@@ -33,16 +33,12 @@ function init() {
     //F2 compiles Program
     if (e.keyCode === 113) {
       e.preventDefault();
-      compile();
+      updateDisplay();
     }
   });
   //Add event listeners to Console element
   let consoleElem = document.getElementById("source");
   consoleElem.addEventListener("keydown", function (e) {
-    if ([33, 34, 37, 38, 39, 40].indexOf(e.keyCode) === -1) {
-      //Reset selected program when edits are made
-      progSel.selectedIndex = 0;
-    }
     if (e.keyCode === 9) {
       //Allow tabs in Console
       e.preventDefault();
@@ -54,10 +50,32 @@ function init() {
       elem.selectionEnd = start+1;
     }
   });
+  consoleElem.addEventListener("input", function() {
+    //Reset selected program when edits are made
+    progSel.selectedIndex = 0;
+  });
 }
 
 function loadProgram(name: string) {
   if (name === "Select One") {return;}
   let source = <HTMLInputElement>document.getElementById("source");
   source.value = tests[name];
+}
+
+//Polyfill for padStart String function
+if (!String.prototype.padStart) {
+    String.prototype.padStart = function padStart(targetLength,padString) {
+        targetLength = targetLength>>0; //truncate if number or convert non-number to 0;
+        padString = String((typeof padString !== 'undefined' ? padString : ' '));
+        if (this.length > targetLength) {
+            return String(this);
+        }
+        else {
+            targetLength = targetLength-this.length;
+            if (targetLength > padString.length) {
+                padString += padString.repeat(targetLength/padString.length); //append to original to ensure we are longer than needed
+            }
+            return padString.slice(0,targetLength) + String(this);
+        }
+    };
 }

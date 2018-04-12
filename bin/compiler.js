@@ -1,6 +1,545 @@
+function genCode(AST, sTree, memManager, pgrmNum) {
+    //Array of machine instructions in hexadecimal code
+    let byteCode = [];
+    //Add an empty placeholder root for sTree (workaround for parseBlock)
+    let tempRoot = new SymbolTable();
+    tempRoot.addChild(sTree);
+    resetSymTableInd(tempRoot);
+    try {
+        parseBlock(AST, tempRoot);
+        Log.breakLine();
+        if (byteCode.length === 0) {
+            Log.print(`Program ${pgrmNum} has no machine code to generate.`, LogPri.INFO);
+        }
+        else {
+            Log.print(`Program ${pgrmNum} compiled successfully with 0 errors.`, LogPri.INFO);
+        }
+        //Allow this program static memory to be overwrriten by future programs
+        memManager.releaseAllStaticMem();
+        return byteCode;
+    }
+    catch (e) {
+        if (e.name === "Compilation_Error" || e.name === "Pgrm_Overflow") {
+            Log.GenMsg(e, LogPri.ERROR);
+            //Allow this program static memory to be overwrriten by future programs
+            memManager.releaseAllStaticMem();
+            return [];
+        }
+        else {
+            throw e;
+        }
+    }
+    function resetSymTableInd(sTable) {
+        sTable.resetSiblingIndex();
+        for (let child of sTable.children) {
+            resetSymTableInd(child);
+        }
+    }
+    function parseBlock(node, sTable) {
+        if (!node.isRoot()) {
+            Log.GenMsg("Descending Scope...");
+        }
+        sTable = sTable.nextChild();
+        for (let child of node.children) {
+            switch (child.name) {
+                case "BLOCK":
+                    parseBlock(child, sTable);
+                    break;
+                case "VAR_DECL":
+                    parseDecl(child, sTable);
+                    break;
+                case "ASSIGN":
+                    parseAssign(child, sTable);
+                    break;
+                case "PRINT":
+                    parsePrint(child, sTable);
+                    break;
+                case "IF":
+                    parseIfStatement(child, sTable);
+                    break;
+                case "WHILE":
+                    parseWhileStatement(child, sTable);
+                    break;
+                default:
+            }
+        }
+        Log.GenMsg("Ascending Scope...");
+    }
+    function parseDecl(node, sTable) {
+        let addr = memManager.allocateStatic(false);
+        Log.GenMsg(`Declaring ${node.children[0].name} '${node.children[1].name}' `
+            + `at location [${addr}]`);
+        sTable.setLocation(node.children[1].name, addr);
+    }
+    function parseAssign(node, sTable) {
+        Log.GenMsg(`Assigning value to variable '${node.children[0].name}'`);
+        let varName = node.children[0].name;
+        let varAddr = sTable.getLocation(varName);
+        let assignNode = node.children[1];
+        if (assignNode.name === "ADD") {
+            //Perform addition, store result in varAddr
+            let resAdd = parseAdd(assignNode, sTable);
+            byteCode.push("AD", resAdd[0], resAdd[1], "8D", varAddr[0], varAddr[1]);
+            memManager.allowOverwrite(resAdd);
+            return;
+        }
+        if (assignNode.name === "CHARLIST") {
+            //Load charlist into heap, store pointer in varAddr
+            let pointer = parseCharList(assignNode);
+            byteCode.push("A9", pointer, "8D", varAddr[0], varAddr[1]);
+            return;
+        }
+        if (assignNode.name === "BOOL_EXPR") {
+            //Evalulate the boolean expression, store result in addr
+            let addr = evalStoreBool(assignNode, sTable);
+            //Load bool result into Acc from memory, store in varAddr
+            byteCode.push("AD", addr[0], addr[1], "8D", varAddr[0], varAddr[1]);
+            memManager.allowOverwrite(addr);
+            return;
+        }
+        if (/^[a-z]$/.test(assignNode.name)) {
+            //Assigning to a variable. Look up variable value and store in varAddr
+            let valAddr = sTable.getLocation(assignNode.name);
+            byteCode.push("AD", valAddr[0], valAddr[1], "8D", varAddr[0], varAddr[1]);
+            return;
+        }
+        if (/[0-9]/.test(assignNode.name)) {
+            //Store single digit in varAddr
+            byteCode.push("A9", "0" + assignNode.name, "8D", varAddr[0], varAddr[1]);
+            return;
+        }
+        if (assignNode.name === "true") {
+            //Save 01 for 'true' in varAddr
+            byteCode.push("A9", "01", "8D", varAddr[0], varAddr[1]);
+            return;
+        }
+        //Save 00 for 'false' in varAddr
+        byteCode.push("A9", "00", "8D", varAddr[0], varAddr[1]);
+    }
+    function parseIfStatement(node, sTable) {
+        Log.GenMsg("Parsing If Statement...");
+        let condNode = node.children[0];
+        let block = node.children[1];
+        let preBlock_PostBlock;
+        let preBlockPos;
+        if (condNode.name === "false") {
+            //Simply return because the block will never be run
+            return;
+        }
+        else if (condNode.name === "BOOL_EXPR") {
+            //Evaluate the boolExpr, so the Z flag contains the answer
+            let isEqualOp = evalBoolExpr(condNode, sTable);
+            if (isEqualOp) {
+                //If not equal, branch to end of block
+                preBlock_PostBlock = memManager.newJumpPoint();
+                byteCode.push("D0", preBlock_PostBlock);
+                preBlockPos = byteCode.length;
+            }
+            else {
+                //If the operator is !=, BNE to beginning of If Block
+                byteCode.push("D0", "07");
+                //Add unconditional branch to end of If Block
+                preBlock_PostBlock = memManager.newJumpPoint();
+                addUnconditionalBranch(preBlock_PostBlock);
+                preBlockPos = byteCode.length;
+            }
+        }
+        parseBlock(block, sTable);
+        if (condNode.name === "BOOL_EXPR") {
+            memManager.setJumpPoint(preBlock_PostBlock, preBlockPos, byteCode.length);
+        }
+    }
+    function parseWhileStatement(node, sTable) {
+        Log.GenMsg("Parsing While Statement...");
+        let condNode = node.children[0];
+        let block = node.children[1];
+        let preBlock_PostBlock;
+        let preEvalPos;
+        let preBlockPos;
+        if (condNode.name === "false") {
+            //Simply return because the block will never be run
+            return;
+        }
+        else if (condNode.name === "BOOL_EXPR") {
+            preEvalPos = byteCode.length;
+            //Evaluate the boolExpr, so the Z flag contains the answer
+            let isEqualOp = evalBoolExpr(condNode, sTable);
+            if (isEqualOp) {
+                //Conditional is ==
+                preBlock_PostBlock = memManager.newJumpPoint();
+                //If BNE, jump to end of block
+                byteCode.push("D0", preBlock_PostBlock);
+                preBlockPos = byteCode.length;
+            }
+            else {
+                //Conditional is !=
+                //If BNE, jump to start of block
+                byteCode.push("D0", "07");
+                //Otherwise, unconditionally branch to end of While Block
+                preBlock_PostBlock = memManager.newJumpPoint();
+                addUnconditionalBranch(preBlock_PostBlock);
+                preBlockPos = byteCode.length;
+            }
+        }
+        else if (condNode.name === "true") {
+            //Unconditional branch back here infinitely
+            preEvalPos = byteCode.length;
+        }
+        //Add Block to hexCode
+        parseBlock(block, sTable);
+        //Unconditionally branch to beginning of conditional
+        let postBlock_preEval = memManager.newJumpPoint();
+        addUnconditionalBranch(postBlock_preEval);
+        memManager.setJumpPoint(postBlock_preEval, byteCode.length, preEvalPos);
+        if (condNode.name === "BOOL_EXPR") {
+            memManager.setJumpPoint(preBlock_PostBlock, preBlockPos, byteCode.length);
+        }
+    }
+    //evalulate BoolVal, Z flag will be set in byteCode after running
+    function evalBoolVal(val) {
+        Log.GenMsg(`Evaluating single boolVal '${val}'...`);
+        let addr = memManager.getFalseVal();
+        if (val === "true") {
+            //Store "00" in X and compare with defualt "00" in memory
+            byteCode.push("A2", "00", "EC", addr[0], addr[1]);
+        }
+        if (val === "false") {
+            //Store "01" in X and compare with defualt "00" in memory
+            byteCode.push("A2", "01", "EC", addr[0], addr[1]);
+        }
+    }
+    //evalulate Bool_Expr, Z flag will be set in byteCode after running
+    //Nested Bool_Expr not currently supported
+    function evalBoolExpr(node, sTable) {
+        Log.GenMsg("Evaulating Bool_Expr...");
+        let expr1 = node.children[0];
+        let boolOp = node.children[1];
+        let expr2 = node.children[2];
+        let addr = null;
+        let addr2 = null;
+        if (expr1.name === "BOOL_EXPR") {
+            addr = evalStoreBool(expr1, sTable);
+        }
+        if (expr2.name === "BOOL_EXPR") {
+            addr2 = evalStoreBool(expr2, sTable);
+        }
+        //Check there are no strings in expression
+        //TODO: Implement string comparison
+        //----------------------------------
+        if (expr1.name === "CHARLIST" || expr2.name === "CHARLIST") {
+            throw error("String comparison not currently supported.");
+        }
+        if (/^[a-z]$/.test(expr1.name)) {
+            let type = sTable.getType(expr1.name);
+            if (type === "STRING") {
+                throw error("String comparison not currently supported.");
+            }
+        }
+        if (/^[a-z]$/.test(expr2.name)) {
+            let type = sTable.getType(expr2.name);
+            if (type === "STRING") {
+                throw error("String comparison not currently supported.");
+            }
+        }
+        //-----------------------------------
+        //Continue with expression evaluation
+        if (addr === null && addr2 === null) {
+            //No nested boolExpr, carry on as usual
+            if (/^[0-9]$/.test(expr1.name) || expr1.name === "true") {
+                loadX(expr1, sTable);
+                addr = getSetMem(expr2, sTable);
+            }
+            else {
+                addr = getSetMem(expr1, sTable);
+                loadX(expr2, sTable);
+            }
+        }
+        else {
+            if (addr === null) {
+                //Expr1 is not a boolExpr, load its value into X
+                loadX(expr1, sTable);
+                if (addr2 === null) {
+                    addr = getSetMem(expr2, sTable);
+                }
+                else {
+                    addr = addr2;
+                }
+            }
+            else {
+                if (addr2 === null) {
+                    //Expr1 is a BoolExpr, but not Expr2
+                    loadX(expr2, sTable);
+                }
+                else {
+                    //Both Exprs are BoolExprs
+                    //Load result of second BoolExpr into X from memory
+                    byteCode.push("AE", addr2[0], addr2[1]);
+                }
+                //Allow result of sub-boolean expressions to be overwrriten
+                memManager.allowOverwrite(addr);
+            }
+            //Allow result of sub-boolean expressions to be overwrriten
+            memManager.allowOverwrite(addr2);
+        }
+        //Compare X and memory location, setting Z with answer
+        byteCode.push("EC", addr[0], addr[1]);
+        //Return if the boolOperation was "equals" (otherwise "not equals")
+        return boolOp.name === "==";
+    }
+    //Evaluate the boolean expression, then store the result in memory
+    //and return the address
+    function evalStoreBool(node, sTable) {
+        let val1;
+        let val2;
+        if (evalBoolExpr(node, sTable)) {
+            val1 = "01";
+            val2 = "00";
+        }
+        else {
+            val1 = "00";
+            val2 = "01";
+        }
+        Log.GenMsg("Storing boolean expression result...");
+        let addr = memManager.allocateStatic();
+        //If not equal, jump to writing val2 into memory, otherwise right val1
+        byteCode.push("D0", "0C", "A9", val1, "8D", addr[0], addr[1]);
+        //Add unconditional branch to skip writing val2 into memory
+        addUnconditionalBranch("05");
+        //Write val2 into memory
+        byteCode.push("A9", val2, "8D", addr[0], addr[1]);
+        return addr;
+    }
+    function addUnconditionalBranch(jumpAmt) {
+        //Set X to "01", compare with "false" value (00) in memory, compare, then BNE
+        let addr = memManager.getFalseVal();
+        byteCode.push("A2", "01", "EC", addr[0], addr[1], "D0", jumpAmt);
+    }
+    //Load the X register with the digit/boolean value in expr1 Node
+    function loadX(node, sTable) {
+        if (/^[0-9]$/.test(node.name)) {
+            //Load single digit into X
+            byteCode.push("A2", "0" + node.name);
+        }
+        else if (node.name === "ADD") {
+            let addr = parseAdd(node, sTable);
+            //Load result into X
+            byteCode.push("AE", addr[0], addr[1]);
+            memManager.allowOverwrite(addr);
+        }
+        else if (node.name === "true") {
+            //Load true (01) into X
+            byteCode.push("A2", "01");
+        }
+        else if (node.name === "false") {
+            //Load false (00) into X
+            byteCode.push("A2", "00");
+        }
+        else if (/^[a-z]$/.test(node.name)) {
+            //Load value of variable into X
+            let addr = sTable.getLocation(node.name);
+            byteCode.push("AE", addr[0], addr[1]);
+        }
+    }
+    //Store value in memory if not already there, then return location address
+    function getSetMem(node, sTable) {
+        if (/^[0-9]$/.test(node.name)) {
+            //Load single digit into Acc, then store
+            let addr = memManager.allocateStatic();
+            byteCode.push("A9", "0" + node.name, "8D", addr[0], addr[1]);
+            return addr;
+        }
+        else if (node.name === "ADD") {
+            //Calculate addition, return the location of result
+            return parseAdd(node, sTable);
+        }
+        else if (node.name === "true") {
+            //Load true (01) into Acc, then store
+            let addr = memManager.allocateStatic();
+            byteCode.push("A9", "01", "8D", addr[0], addr[1]);
+            return addr;
+        }
+        else if (node.name === "false") {
+            //Location of default "00" (false)
+            return memManager.getFalseVal();
+        }
+        else if (/^[a-z]$/.test(node.name)) {
+            //Return location of variable value
+            return sTable.getLocation(node.name);
+        }
+    }
+    function parseCharList(node) {
+        let str = node.children[0].name;
+        Log.GenMsg(`Allocating memory in Heap for string "${str}"...`);
+        let hexData = "";
+        //Convert string into series of hexCodes
+        for (let i = 0; i < str.length; i++) {
+            hexData += str.charCodeAt(i).toString(16) + " ";
+        }
+        //Add NULL string terminator
+        hexData += "00";
+        //Allocate heap space and return placeholder addr
+        return memManager.allocateHeap(hexData);
+    }
+    //Assuming Z is set with result of evaulation, prints "true"/"false"
+    //isEqual denotes whether the boolOp was == or not
+    function printEvalResult(isEqual = true) {
+        let truAddr = memManager.getTrueString();
+        let falseAddr = memManager.getFalseString();
+        byteCode.push("D0", "0D", "A2", "02", "AC");
+        if (isEqual) {
+            byteCode.push(truAddr[0], truAddr[1]);
+        }
+        else {
+            byteCode.push(falseAddr[0], falseAddr[1]);
+        }
+        byteCode.push("FF");
+        //Jump to rest of program
+        addUnconditionalBranch("06");
+        byteCode.push("A2", "02", "AC");
+        if (isEqual) {
+            byteCode.push(falseAddr[0], falseAddr[1]);
+        }
+        else {
+            byteCode.push(truAddr[0], truAddr[1]);
+        }
+        byteCode.push("FF");
+    }
+    function parsePrint(node, sTable) {
+        Log.GenMsg("Parsing Print Statement...");
+        let child = node.children[0];
+        if (child.hasChildren()) {
+            //Evalulate Expr
+            if (child.name === "ADD") {
+                let addr = parseAdd(child, sTable);
+                //Load Y register with result of ADD stored in addr
+                //Set X to 01, call SYS to print
+                byteCode.push("AC", addr[0], addr[1], "A2", "01", "FF");
+                memManager.allowOverwrite(addr);
+            }
+            else if (child.name === "CHARLIST") {
+                //Print CharList
+                let addr = parseCharList(child);
+                //Load addr into Y register, set X to 02 and call SYS to print
+                byteCode.push("A0", addr, "A2", "02", "FF");
+            }
+            else if (child.name === "BOOL_EXPR") {
+                //Evaulate BoolExpr
+                let isEqual = evalBoolExpr(child, sTable);
+                //Print result
+                printEvalResult(isEqual);
+            }
+        }
+        else {
+            switch (child.token.name) {
+                case "DIGIT":
+                    //Load digit into Y register, set X to 01 and call SYS to print
+                    byteCode.push("A0", `0${child.name}`, "A2", "01", "FF");
+                    break;
+                case "ID":
+                    //Print variable value
+                    let addr = sTable.getLocation(child.name);
+                    switch (sTable.getType(child.name)) {
+                        case "STRING":
+                            //Load addr into Y register, set X to 02 and call SYS to print
+                            byteCode.push("AC", addr[0], addr[1], "A2", "02", "FF");
+                            break;
+                        case "INT":
+                            //Load digit into Y register, set X to 01 and call SYS to print
+                            byteCode.push("AC", addr[0], addr[1], "A2", "01", "FF");
+                            break;
+                        case "BOOLEAN":
+                            {
+                                //Evaulate Boolean, print result
+                                //Compare val of variable with "true"
+                                byteCode.push("A2", "01", "EC", addr[0], addr[1]);
+                                printEvalResult(true);
+                                break;
+                            }
+                    }
+                    break;
+                case "BOOLVAL":
+                    //Print true/false
+                    if (child.token.symbol === "true") {
+                        let addr = memManager.getTrueString();
+                        byteCode.push("AC", addr[0], addr[1], "A2", "02", "FF");
+                    }
+                    else {
+                        let addr = memManager.getFalseString();
+                        byteCode.push("AC", addr[0], addr[1], "A2", "02", "FF");
+                    }
+                    break;
+                default:
+            }
+        }
+    }
+    function parseAdd(node, sTable) {
+        Log.GenMsg("Parsing Add subtree...");
+        let results = optimizeAdd(0, node);
+        if (results[0] > 255) {
+            throw error("Integer Overflow: result of calculation exceeds maximum " +
+                "storage for integer (1 byte)");
+        }
+        if (/^[a-z]$/.test(results[1])) {
+            //The last element is an ID
+            let varLoc = sTable.getLocation(results[1]);
+            let resLoc = memManager.allocateStatic();
+            //Load accumulated num into Acc, then add value stored in the variable
+            byteCode.push("A9", results[0].toString(16).padStart(2, "0"), "6D", varLoc[0], varLoc[1]);
+            //Store the result in memory, return the location
+            byteCode.push("8D", resLoc[0], resLoc[1]);
+            return resLoc;
+        }
+        else {
+            //The last element is a digit wrapped in a string
+            let num = results[0] + parseInt(results[1]);
+            if (num > 255) {
+                throw error("Integer Overflow: result of calculation exceeds maximum " +
+                    "storage for integer (1 byte)");
+            }
+            let addr = memManager.allocateStatic();
+            //Load the result into Acc, store in memory, return the location
+            byteCode.push("A9", num.toString(16).padStart(2, "0"), "8D", addr[0], addr[1]);
+            return addr;
+        }
+        //Recursive helper func traverses ADD subtrees, returns rightmost child and
+        //the summation of all other children
+        function optimizeAdd(acc, addNode) {
+            let num = parseInt(addNode.children[0].name);
+            if (addNode.children[1].name === "ADD") {
+                return optimizeAdd(acc + num, addNode.children[1]);
+            }
+            else {
+                return [acc + num, addNode.children[1].name];
+            }
+        }
+    }
+    function error(msg) {
+        let e = new Error(msg);
+        e.name = "Compilation_Error";
+        return e;
+    }
+}
+function updateDisplay() {
+    let hexDiv = document.getElementById("hexDiv");
+    let loadDiv = document.getElementById("loading");
+    loadDiv.style.display = "block";
+    hexDiv.style.display = "none";
+    let hexDisplay = document.getElementById("hexCode");
+    hexDisplay.value = "";
+    //Call compile with a timeout to allow the display changes to take affect
+    setTimeout(compile, 30);
+}
 function compile() {
     //Get source code
     let source = document.getElementById("source").value;
+    let hexDiv = document.getElementById("hexDiv");
+    let loadDiv = document.getElementById("loading");
+    let hexDisplay = document.getElementById("hexCode");
+    /*
+    loadDiv.style.display = "block";
+    hexDiv.style.display = "none";
+    hexDisplay.value = "";
+    */
     Log.clear();
     //Split source code of programs
     let pgrms = source.split("$");
@@ -25,13 +564,15 @@ function compile() {
     }
     let lineCount = 1;
     let colCount = 0;
+    let memTable = new MemoryManager();
+    let byteCode = [];
     for (let i = 0; i < pgrms.length; i++) {
         Log.pgrmSeparater();
         Log.print("Lexing Program " + (i + 1) + "...");
-        let results = lex(pgrms[i], lineCount, colCount, i + 1);
-        let tokenLinkedList = results[0];
-        lineCount = results[1];
-        colCount = results[2];
+        let lexRes = lex(pgrms[i], lineCount, colCount, i + 1);
+        let tokenLinkedList = lexRes[0];
+        lineCount = lexRes[1];
+        colCount = lexRes[2];
         if (tokenLinkedList === null) {
             continue;
         }
@@ -43,20 +584,47 @@ function compile() {
         }
         Log.breakLine();
         Log.print("Analyzing Program " + (i + 1) + "...");
-        let res = analyze(tokenLinkedList, i + 1);
-        if (res === null) {
+        let semRes = analyze(tokenLinkedList, i + 1);
+        if (semRes === null) {
             continue;
         }
-        let AST = res[0];
-        let sTree = res[1];
+        Log.breakLine();
+        Log.print("Generating code for Program " + (i + 1) + "...");
+        let codeArr = genCode(semRes[0], semRes[1], memTable, i + 1);
+        byteCode = byteCode.concat(codeArr);
     }
+    if (byteCode.length === 0) {
+        loadDiv.style.display = "none";
+        return;
+    }
+    //Perform backpatching and display machine code
+    byteCode.push("00");
+    try {
+        Log.breakLine(LogPri.VERBOSE);
+        Log.dottedLine(LogPri.VERBOSE);
+        let code = memTable.backpatch(byteCode);
+        hexDisplay.value = code.padEnd(767, " 00").toUpperCase();
+        hexDiv.style.display = "block";
+    }
+    catch (e) {
+        if (e.name === "Pgrm_Overflow") {
+            Log.print("ERROR: " + e.message, LogPri.ERROR);
+            Log.scrollToBottom();
+            loadDiv.style.display = "none";
+        }
+        else {
+            throw e;
+        }
+    }
+    Log.scrollToBottom();
+    loadDiv.style.display = "none";
 }
 //All test cases names and source code to be displayed in console panel
 let tests = {
     "Alan Test Case": "/*  Provided By \n  - Alan G Labouseur\n*/\n{}$\t\n{{{{{{}}}}}}$\t\n{{{{{{}}}}}}}$\t\n{int\t@}$",
     "Simple Test 1": "/* Simple Program - No Operations */\n{}$",
     "Simple Test 2": "/* Print Operation */\n{\n\tprint(\"the cake is a lie\")\n}$",
-    "Simple Test 3": "{\n    int a \n    boolean b \n    {\n        string c\n        a = 5 \n        b = true \n        c = \"inta\"\n        print(c)\n    }\n    string c\n    c = \" \"\n    print(c)\n    print(b) \n    print(\" \")\n    print(a)\n}$",
+    "Simple Test 3": "{\n    int a\n    boolean b\n    {\n        string c\n        a = 5\n        b = true\n        c = \"inta\"\n        print(c)\n    }\n    string c\n    c = \" \"\n    print(c)\n    print(b)\n    print(\" \")\n    print(a)\n}$",
     "Long Test Case": "/* Long Test Case */\n{\n\t/* Int Declaration */\n\tint a\n\tint b\n\n\ta = 0\n\tb = 0\n\n\t/* While Loop */\n\twhile (a != 3) {\n    \tprint(a)\n    \twhile (b != 3) {\n        \t\tprint(b)\n        \t\tb = 1 + b\n        \t\tif (b == 2) {\n\t\t\t        /* Print Statement */\n            \t\tprint(\"there is no spoon\"/* This will do nothing */)\n        \t\t}\n    \t}\n\n    \tb = 0\n    \ta = 1 + a\n\t}\n}$",
     "Long Test Case - ONE LINE": "/*LongTestCase*/{/*IntDeclaration*/intaintba=0b=0/*WhileLoop*/while(a!=3){print(a)while(b!=3){print(b)b=1+bif(b==2){/*PrintStatement*/print(\"there is no spoon\"/*Thiswilldonothing*/)}}b=0a=1+a}}$",
     "Invalid String": "/* This will fail because strings\n - can't contain numbers */\n{\n\tprint(\"12\")\n}$",
@@ -105,16 +673,12 @@ function init() {
         //F2 compiles Program
         if (e.keyCode === 113) {
             e.preventDefault();
-            compile();
+            updateDisplay();
         }
     });
     //Add event listeners to Console element
     let consoleElem = document.getElementById("source");
     consoleElem.addEventListener("keydown", function (e) {
-        if ([33, 34, 37, 38, 39, 40].indexOf(e.keyCode) === -1) {
-            //Reset selected program when edits are made
-            progSel.selectedIndex = 0;
-        }
         if (e.keyCode === 9) {
             //Allow tabs in Console
             e.preventDefault();
@@ -126,6 +690,10 @@ function init() {
             elem.selectionEnd = start + 1;
         }
     });
+    consoleElem.addEventListener("input", function () {
+        //Reset selected program when edits are made
+        progSel.selectedIndex = 0;
+    });
 }
 function loadProgram(name) {
     if (name === "Select One") {
@@ -133,6 +701,23 @@ function loadProgram(name) {
     }
     let source = document.getElementById("source");
     source.value = tests[name];
+}
+//Polyfill for padStart String function
+if (!String.prototype.padStart) {
+    String.prototype.padStart = function padStart(targetLength, padString) {
+        targetLength = targetLength >> 0; //truncate if number or convert non-number to 0;
+        padString = String((typeof padString !== 'undefined' ? padString : ' '));
+        if (this.length > targetLength) {
+            return String(this);
+        }
+        else {
+            targetLength = targetLength - this.length;
+            if (targetLength > padString.length) {
+                padString += padString.repeat(targetLength / padString.length); //append to original to ensure we are longer than needed
+            }
+            return padString.slice(0, targetLength) + String(this);
+        }
+    };
 }
 /// <reference path="Helper.ts"/>
 function lex(source, lineNum, charNum, pgrmNum) {
@@ -401,9 +986,11 @@ class Log {
     static print(msg, priority = LogPri.INFO) {
         if (priority >= Log.level) {
             Log.logElem.value += " " + msg + "\n";
-            //Scroll Log to bottom bottom when updating
-            Log.logElem.scrollTop = Log.logElem.scrollHeight;
         }
+    }
+    static scrollToBottom() {
+        //Scroll Log to bottom bottom when updating
+        Log.logElem.scrollTop = Log.logElem.scrollHeight;
     }
     static clear() {
         Log.logElem.value = "";
@@ -464,6 +1051,11 @@ class Log {
         str += msg;
         Log.print(str, priority);
     }
+    static GenMsg(msg, priority = LogPri.VERBOSE) {
+        let str = "CODE_GEN: ";
+        str += msg;
+        Log.print(str, priority);
+    }
     static isClear() {
         return Log.logElem.value.replace(/[ \n]/g, "") == "";
     }
@@ -477,9 +1069,9 @@ class Log {
             return Log.isClear();
         }
     }
-    static breakLine() {
+    static breakLine(pri = LogPri.ERROR) {
         if (!Log.isLastLineClear())
-            Log.print("", LogPri.ERROR);
+            Log.print("", pri);
     }
     static dottedLine(pri) {
         Log.print("-------------------------------------", pri);
@@ -491,6 +1083,176 @@ class Log {
     }
 }
 Log.level = LogPri.VERBOSE;
+/// <reference path="Helper.ts"/>
+class MemoryManager {
+    constructor() {
+        this.heap = {};
+        this.dirtyMemory = [];
+        this.reservedTable = {};
+        this.staticTable = {};
+        this.jumpTable = {};
+        this.jumpTableLen = 0;
+        this.staticLength = 0;
+        this.heapLength = 0;
+    }
+    getFalseVal() {
+        if (this.reservedTable["FV XX"] === undefined) {
+            //Initialize a static memory address that will hold a 00
+            //Used as a "false" value for unconditional branching
+            this.reservedTable["FV XX"] = { loc: "", data: "00" };
+        }
+        return ["FV", "XX"];
+    }
+    getFalseString() {
+        if (this.reservedTable["FS XX"] === undefined) {
+            //Add hexdata for "false" string in heap. Store pointer in reservedTable
+            let addr = this.allocateHeap("66 61 6C 73 65 00");
+            this.reservedTable["FS XX"] = { loc: "", data: addr };
+        }
+        return ["FS", "XX"];
+    }
+    getTrueString() {
+        if (this.reservedTable["TS XX"] === undefined) {
+            //Add hexdata for "true" string in heap. Store pointer in reservedTable
+            let addr = this.allocateHeap("74 72 75 65 00");
+            this.reservedTable["TS XX"] = { loc: "", data: addr };
+        }
+        return ["TS", "XX"];
+    }
+    //Allocate new static memory. Return name of placeholder addr
+    allocateStatic(allowDirty = true) {
+        if (allowDirty && this.dirtyMemory.length > 0) {
+            let addr = this.dirtyMemory.shift();
+            return addr.split(" ");
+        }
+        //Create placeholder address
+        let addr = "S" + this.staticLength.toString().padStart(3, "0");
+        this.staticLength++;
+        addr = addr.substr(0, 2) + " " + addr.substr(2);
+        this.staticTable[addr] = "";
+        return addr.split(" ");
+    }
+    //Allocate new heap memory. Return name of placeholder addr
+    allocateHeap(hexData) {
+        let addr = "H" + this.heapLength++; //Create placeholder address
+        this.heap[addr] = { data: hexData, loc: "" };
+        return addr;
+    }
+    newJumpPoint() {
+        let jp = "J" + this.jumpTableLen++; //Create placeholder address
+        this.jumpTable[jp] = "";
+        return jp;
+    }
+    setJumpPoint(jumpPoint, start, end) {
+        if (this.jumpTable[jumpPoint] === undefined) {
+            this.jumpTableLen++;
+        }
+        this.jumpTable[jumpPoint] = end - start;
+    }
+    setJumpPointManual(jumpPoint, jumpAmt) {
+        if (this.jumpTable[jumpPoint] === undefined) {
+            this.jumpTableLen++;
+        }
+        this.jumpTable[jumpPoint] = jumpAmt;
+    }
+    allowOverwrite(addr) {
+        if (addr !== null && addr.length === 2) {
+            let loc = addr.join(" ");
+            if (this.dirtyMemory.indexOf(loc) === -1) {
+                this.dirtyMemory.push(loc);
+            }
+        }
+    }
+    releaseAllStaticMem() {
+        //Set the entire contents of static memory to be marked for re-use
+        let keys = Object.keys(this.staticTable);
+        this.dirtyMemory = this.dirtyMemory.concat(keys);
+    }
+    backpatch(byteArr) {
+        //Pad byteArr with zeros for static locations
+        let staticKeys = Object.keys(this.staticTable);
+        let resKeys = Object.keys(this.reservedTable);
+        let heapKeys = Object.keys(this.heap);
+        let alpha = byteArr.length;
+        let beta = alpha + staticKeys.length + resKeys.length;
+        if (beta + heapKeys.length > 256) {
+            throw this.error();
+        }
+        let hex;
+        for (let i = 0; i < staticKeys.length; i++) {
+            //Convert to hex address
+            hex = (alpha + i).toString(16).padStart(4, "0").toUpperCase();
+            //Swap the order of bytes to reflect the addressing scheme in 6502a
+            this.staticTable[staticKeys[i]] = hex.substr(2) + " " + hex.substr(0, 2);
+            //Add empty memory to byteCode
+            byteArr.push("00");
+        }
+        for (let i = 0; i < resKeys.length; i++) {
+            //Convert to hex address
+            hex = (alpha + staticKeys.length + i).toString(16).padStart(4, "0").toUpperCase();
+            //Swap the order of bytes to reflect the addressing scheme in 6502a
+            this.reservedTable[resKeys[i]].loc = hex.substr(2) + " " + hex.substr(0, 2);
+            //Add empty memory to byteCode
+            byteArr.push(this.reservedTable[resKeys[i]].data);
+        }
+        let offset = 0;
+        for (let key of heapKeys) {
+            this.heap[key].loc = (beta + offset).toString(16).padStart(2, "0").toUpperCase();
+            offset += this.heap[key].data.split(" ").length;
+        }
+        if (beta + offset > 256) {
+            throw this.error();
+        }
+        let code = byteArr.join(" ");
+        let regExp;
+        //Add heap to code and backpatch
+        for (let key of heapKeys) {
+            code += " " + this.heap[key].data;
+            Log.print(`Backpatching '${key}' to '${this.heap[key].loc}'...`, LogPri.VERBOSE);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.heap[key].loc);
+        }
+        //Backpatch reserved locations
+        for (let key of resKeys) {
+            Log.print(`Backpatching '${key}' to '${this.reservedTable[key].loc}'...`, LogPri.VERBOSE);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.reservedTable[key].loc);
+        }
+        //Backpatch static locations
+        for (let key of staticKeys) {
+            Log.print(`Backpatching '${key}' to '${this.staticTable[key]}'...`, LogPri.VERBOSE);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, this.staticTable[key]);
+        }
+        //Backpatch jump locations
+        let jumpKeys = Object.keys(this.jumpTable);
+        for (let key of jumpKeys) {
+            let addr;
+            if (this.jumpTable[key] >= 0) {
+                addr = this.jumpTable[key].toString(16).padStart(2, "0").toUpperCase();
+            }
+            else {
+                let jumpAmt = 256 + this.jumpTable[key];
+                if (jumpAmt == 256) {
+                    jumpAmt = 0;
+                }
+                addr = jumpAmt.toString(16).padStart(2, "0").toUpperCase();
+            }
+            Log.print(`Backpatching '${key}' to '${addr}'...`, LogPri.VERBOSE);
+            regExp = new RegExp(key, 'g');
+            code = code.replace(regExp, addr);
+        }
+        if (code.length > 767) {
+            throw this.error();
+        }
+        return code;
+    }
+    error() {
+        let e = new Error("Program exceeds 256 bytes!");
+        e.name = "Pgrm_Overflow";
+        return e;
+    }
+}
 function parse(token, pgrmNum) {
     let numWarns = 0;
     //Initial parsing of Program
@@ -759,6 +1521,9 @@ function analyze(token, pgrmNum) {
         Log.SemMsg("Checking for unused variables...");
         checkUnusedVars(sRoot);
         Log.breakLine();
+        Log.SemMsg("Type checking bool expressions...");
+        checkBoolExprs(root, sRoot);
+        Log.breakLine();
         Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
         Log.print(root.toString(), LogPri.VERBOSE);
         if (!sRoot.isEmpty()) {
@@ -804,6 +1569,48 @@ function analyze(token, pgrmNum) {
         for (let node of children) {
             checkUnusedVars(node);
         }
+    }
+    function checkBoolExprs(node, sTable) {
+        for (let child of node.children) {
+            if (child.name === "BOOL_EXPR") {
+                let expr1 = child.children[0];
+                let expr2 = child.children[2];
+                if (getBoolType(expr1, sTable) === getBoolType(expr2, sTable)) {
+                    //Types match
+                    continue;
+                }
+                //Types do not match
+                let tok = child.children[1].token;
+                throw boolTypeError(tok);
+            }
+            else if (child.name === "BLOCK") {
+                checkBoolExprs(child, sTable.nextChild());
+            }
+            else if (child.hasChildren) {
+                checkBoolExprs(child, sTable);
+            }
+        }
+        return;
+    }
+    function getBoolType(node, sTable) {
+        switch (node.name) {
+            case "true":
+                return "BOOLEAN";
+            case "false":
+                return "BOOLEAN";
+            case "BOOL_EXPR":
+                return "BOOLEAN";
+            case "ADD":
+                return "INT";
+            case "CHARLIST":
+                return "STRING";
+        }
+        if (/^[a-z]$/.test(node.name)) {
+            //It's an ID
+            return sTable.getType(node.name);
+        }
+        //It's a single digit`
+        return "INT";
     }
     function analyzeBlock(parent, scope) {
         Log.SemMsg("Adding new Block to AST...");
@@ -1025,6 +1832,18 @@ function analyze(token, pgrmNum) {
         Log.SemMsg("Adding While Loop to AST...");
         let node = branchNode("WHILE", parent);
         discard(["while"]);
+        if (token.symbol === "true") {
+            numWarns++;
+            Log.SemMsg(`Infinite Loop defined at line: ${token.line} col: ` +
+                `${token.col}`, LogPri.WARNING);
+        }
+        else if (token.symbol === "false") {
+            let line = token.next.line;
+            let col = token.next.col;
+            numWarns++;
+            Log.SemMsg("While Loop condition set to 'false', so the code block will "
+                + `never run at line: ${line} col: ${col}`, LogPri.WARNING);
+        }
         analyzeBoolExpr(node, scope);
         //Block to be run
         analyzeBlock(node, scope);
@@ -1053,6 +1872,9 @@ function analyze(token, pgrmNum) {
         e.name = "Semantic_Error";
         return e;
     }
+    function boolTypeError(tok) {
+        return error(`Type Mismatch in boolean expression at line:${tok.line} col:${tok.col}`);
+    }
     function typeError(assignEntry, valToken, valType, displayVal = true) {
         let msg = `Type Mismatch: attempted to assign [${valType}`;
         msg += (displayVal) ? `, ${valToken.symbol}] ` : "] ";
@@ -1079,6 +1901,7 @@ class BaseNode {
         this.name = name;
         this.children = [];
         this.parent = null;
+        this.siblingIndex = -1;
     }
     addChild(node) {
         this.children.push(node);
@@ -1090,8 +1913,23 @@ class BaseNode {
     hasChildren() {
         return this.children.length > 0;
     }
+    nextChild() {
+        if (this.hasChildren()) {
+            this.siblingIndex++;
+            if (this.siblingIndex < this.children.length) {
+                return this.children[this.siblingIndex];
+            }
+            else {
+                this.siblingIndex = -1;
+            }
+        }
+        return null;
+    }
     getSiblings() {
         return this.parent.children;
+    }
+    resetSiblingIndex() {
+        this.siblingIndex = -1;
     }
     getLeafNodes() {
         let leaves = [];
@@ -1150,6 +1988,19 @@ class SymbolTable extends BaseNode {
     insert(nameTok, typeTok) {
         this.table[nameTok.symbol] = { nameTok: nameTok, typeTok: typeTok,
             initialized: false, used: false };
+    }
+    setLocation(varName, loc) {
+        this.lookup(varName).memLoc = loc;
+    }
+    getLocation(varName) {
+        return this.lookup(varName).memLoc;
+    }
+    getType(varName) {
+        let entry = this.lookup(varName);
+        if (entry === undefined) {
+            return null;
+        }
+        return entry.typeTok.name;
     }
     lookup(name) {
         let node = this;

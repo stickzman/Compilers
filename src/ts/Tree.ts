@@ -1,6 +1,7 @@
 class BaseNode {
   public children: BaseNode[] = [];
   public parent: BaseNode = null;
+  protected siblingIndex = -1;
 
   constructor(public name: string) {  }
 
@@ -17,8 +18,24 @@ class BaseNode {
     return this.children.length > 0;
   }
 
+  public nextChild() {
+    if (this.hasChildren()) {
+      this.siblingIndex++;
+      if (this.siblingIndex < this.children.length) {
+        return this.children[this.siblingIndex];
+      } else {
+        this.siblingIndex = -1;
+      }
+    }
+    return null;
+  }
+
   public getSiblings() {
     return this.parent.children;
+  }
+
+  public resetSiblingIndex() {
+    this.siblingIndex = -1;
   }
 
   public getLeafNodes() {

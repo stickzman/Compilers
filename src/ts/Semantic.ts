@@ -18,6 +18,10 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     checkUnusedVars(sRoot);
 
     Log.breakLine();
+    Log.SemMsg("Type checking bool expressions...");
+    checkBoolExprs(root, sRoot);
+
+    Log.breakLine();
     Log.print("AST for Program " + pgrmNum + ":", LogPri.VERBOSE);
     Log.print(root.toString(), LogPri.VERBOSE);
 
@@ -66,6 +70,49 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     for (let node of children) {
       checkUnusedVars(node);
     }
+  }
+
+  function checkBoolExprs(node: TNode, sTable: SymbolTable) {
+    for(let child of node.children) {
+      if (child.name === "BOOL_EXPR") {
+        let expr1 = child.children[0];
+        let expr2 = child.children[2];
+        if (getBoolType(expr1, sTable) === getBoolType(expr2, sTable)) {
+          //Types match
+          continue;
+        }
+        //Types do not match
+        let tok = (<TNode>child.children[1]).token;
+        throw boolTypeError(tok);
+      } else if (child.name === "BLOCK") {
+        checkBoolExprs(child, <SymbolTable>sTable.nextChild());
+      } else if (child.hasChildren) {
+        checkBoolExprs(child, sTable);
+      }
+    }
+    return;
+
+  }
+
+  function getBoolType(node: BaseNode, sTable: SymbolTable): string {
+    switch (node.name) {
+      case "true":
+        return "BOOLEAN";
+      case "false":
+        return "BOOLEAN";
+      case "BOOL_EXPR":
+        return "BOOLEAN";
+      case "ADD":
+        return "INT";
+      case "CHARLIST":
+        return "STRING";
+    }
+    if (/^[a-z]$/.test(node.name)){
+      //It's an ID
+      return sTable.getType(node.name);
+    }
+    //It's a single digit`
+    return "INT"
   }
 
   function analyzeBlock(parent: TNode, scope: SymbolTable) {
@@ -294,6 +341,17 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     Log.SemMsg("Adding While Loop to AST...");
     let node = branchNode("WHILE", parent);
     discard(["while"]);
+    if (token.symbol === "true") {
+      numWarns++;
+      Log.SemMsg(`Infinite Loop defined at line: ${token.line} col: `+
+                  `${token.col}`, LogPri.WARNING);
+    } else if (token.symbol === "false") {
+      let line = token.next.line;
+      let col = token.next.col;
+      numWarns++;
+      Log.SemMsg("While Loop condition set to 'false', so the code block will "
+                + `never run at line: ${line} col: ${col}`, LogPri.WARNING);
+    }
     analyzeBoolExpr(node, scope);
     //Block to be run
     analyzeBlock(node, scope);
@@ -324,6 +382,10 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     let e = new Error(msg);
     e.name = "Semantic_Error";
     return e;
+  }
+
+  function boolTypeError(tok: Token) {
+    return error(`Type Mismatch in boolean expression at line:${tok.line} col:${tok.col}`);
   }
 
   function typeError(assignEntry, valToken: Token, valType: string, displayVal: boolean = true) {
