@@ -78,7 +78,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
 
   function parseDecl(node: TNode, sTable: SymbolTable) {
     let addr = memManager.allocateStatic(false);
-    Log.GenMsg(`Declaring ${node.children[0].name} '${node.children[1].name}'`
+    Log.GenMsg(`Declaring ${node.children[0].name} '${node.children[1].name}' `
                 + `at location [${addr}]`);
     sTable.setLocation(node.children[1].name, addr);
   }

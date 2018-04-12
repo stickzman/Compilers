@@ -67,7 +67,7 @@ function genCode(AST, sTree, memManager, pgrmNum) {
     }
     function parseDecl(node, sTable) {
         let addr = memManager.allocateStatic(false);
-        Log.GenMsg(`Declaring ${node.children[0].name} '${node.children[1].name}'`
+        Log.GenMsg(`Declaring ${node.children[0].name} '${node.children[1].name}' `
             + `at location [${addr}]`);
         sTable.setLocation(node.children[1].name, addr);
     }
@@ -679,10 +679,6 @@ function init() {
     //Add event listeners to Console element
     let consoleElem = document.getElementById("source");
     consoleElem.addEventListener("keydown", function (e) {
-        if ([33, 34, 37, 38, 39, 40].indexOf(e.keyCode) === -1) {
-            //Reset selected program when edits are made
-            progSel.selectedIndex = 0;
-        }
         if (e.keyCode === 9) {
             //Allow tabs in Console
             e.preventDefault();
@@ -693,6 +689,10 @@ function init() {
             elem.selectionStart = start + 1;
             elem.selectionEnd = start + 1;
         }
+    });
+    consoleElem.addEventListener("input", function () {
+        //Reset selected program when edits are made
+        progSel.selectedIndex = 0;
     });
 }
 function loadProgram(name) {
