@@ -102,11 +102,8 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       return;
     }
     if (assignNode.name === "BOOL_EXPR") {
-      //Evalulate the boolean expression, store result in addr
-      let addr = evalStoreBool(assignNode, sTable);
-      //Load bool result into Acc from memory, store in varAddr
-      byteCode.push("AD",addr[0],addr[1],"8D",varAddr[0],varAddr[1]);
-      memManager.allowOverwrite(addr);
+      //Evalulate the boolean expression, store result in var
+      evalStoreBool(assignNode, sTable, varAddr);
       return;
     }
     if (/^[a-z]$/.test(assignNode.name)) {
@@ -295,7 +292,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
 
   //Evaluate the boolean expression, then store the result in memory
   //and return the address
-  function evalStoreBool(node: TNode, sTable: SymbolTable): string[] {
+  function evalStoreBool(node: TNode, sTable: SymbolTable, addr?: string[]): string[] {
     let val1: string;
     let val2: string;
     if (evalBoolExpr(node, sTable)) {
@@ -306,7 +303,10 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       val2 = "01";
     }
     Log.GenMsg("Storing boolean expression result...");
-    let addr = memManager.allocateStatic();
+    if (addr === undefined) {
+      //If no place to store the result was given, allocate new memory
+      addr = memManager.allocateStatic();
+    }
     //If not equal, jump to writing val2 into memory, otherwise right val1
     byteCode.push("D0","0C","A9",val1,"8D",addr[0],addr[1]);
     //Add unconditional branch to skip writing val2 into memory
