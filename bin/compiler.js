@@ -1781,6 +1781,7 @@ function analyze(token, pgrmNum) {
         if (token.name === "LEN") {
             discard(["~"]);
             node.addChild(new TNode(token.symbol, token));
+            token = token.next;
             discard(["]"]);
             return;
         }
