@@ -293,7 +293,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       addr = memManager.allocateStatic();
     }
     //Write val1 into memory, if not equal jump to rest of pgrm
-    byteCode.push("A9",val1,"8D",addr[0],addr[1],"D0","05");
+    byteCode.push("A9",val1,"D0","02");
     //otherwise overwrite val1 with val2
     byteCode.push("A9",val2,"8D",addr[0],addr[1]);
     return addr;
