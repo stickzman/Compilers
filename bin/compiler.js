@@ -385,22 +385,21 @@ function genCode(AST, sTree, memManager, pgrmNum) {
     function printEvalResult(isEqual = true) {
         let truAddr = memManager.getTrueString();
         let falseAddr = memManager.getFalseString();
-        byteCode.push("D0", "0D", "A2", "02", "AC");
-        if (isEqual) {
-            byteCode.push(truAddr[0], truAddr[1]);
-        }
-        else {
-            byteCode.push(falseAddr[0], falseAddr[1]);
-        }
-        byteCode.push("FF");
-        //Jump to rest of program
-        addUnconditionalBranch("06");
+        //Load X with 2, Load Y with appr string
         byteCode.push("A2", "02", "AC");
         if (isEqual) {
             byteCode.push(falseAddr[0], falseAddr[1]);
         }
         else {
             byteCode.push(truAddr[0], truAddr[1]);
+        }
+        //If BNE, Jump to SYS call, otherwise reload Y
+        byteCode.push("D0", "03", "AC");
+        if (isEqual) {
+            byteCode.push(truAddr[0], truAddr[1]);
+        }
+        else {
+            byteCode.push(falseAddr[0], falseAddr[1]);
         }
         byteCode.push("FF");
     }
