@@ -229,13 +229,6 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     if (expr2.name === "BOOL_EXPR") {
       addr2 = evalStoreBool(expr2, sTable);
     }
-    //Check there are no strings literals in expression
-    //TODO: Implement string literal comparison
-    /*
-    if (expr1.name === "CHARLIST" || expr2.name === "CHARLIST") {
-      throw error("String literals comparison not currently supported.");
-    }
-    */
     if (addr === null && addr2 === null) {
       //No nested boolExpr, carry on as usual
       if (/^[0-9]$/.test(expr1.name)) {

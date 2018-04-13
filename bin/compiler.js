@@ -218,13 +218,6 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         if (expr2.name === "BOOL_EXPR") {
             addr2 = evalStoreBool(expr2, sTable);
         }
-        //Check there are no strings literals in expression
-        //TODO: Implement string literal comparison
-        /*
-        if (expr1.name === "CHARLIST" || expr2.name === "CHARLIST") {
-          throw error("String literals comparison not currently supported.");
-        }
-        */
         if (addr === null && addr2 === null) {
             //No nested boolExpr, carry on as usual
             if (/^[0-9]$/.test(expr1.name)) {
@@ -733,13 +726,7 @@ function lex(source, lineNum, charNum, pgrmNum) {
         }
         let token;
         //Look for all multi-character tokens using RegExp
-        if (/^~[0-9]?/.test(source)) {
-            token = createToken("~" + source[1], "ARR_LEN", last, parseInt(source[1]));
-            console.log(token);
-            charNum += 2;
-            getTokens(source.substring(2), token);
-        }
-        else if (/^print/.test(source)) {
+        if (/^print/.test(source)) {
             token = createToken("print", "PRINT", last);
             charNum += 5;
             getTokens(source.substring(5), token);
@@ -838,9 +825,14 @@ function lex(source, lineNum, charNum, pgrmNum) {
             return token;
         }
         switch (source.charAt(0)) {
+            case '~':
+                token = createToken("~", "LEN", last);
+                //Get the rest of the tokens recursively
+                charNum += 1;
+                getTokens(source.substring(1), token);
+                return token;
             case ',':
                 token = createToken(",", "COMMA", last);
-                //Get the rest of the tokens recursively
                 charNum += 1;
                 getTokens(source.substring(1), token);
                 return token;
@@ -1392,7 +1384,11 @@ function parse(token, pgrmNum) {
         Log.ParseMsg("parseVarDecl()");
         let node = branchNode("VarDecl", parent);
         let type = token;
-        parseType(node);
+        let typeNode = parseType(node);
+        if (token.name === "LBRACK") {
+            let arrTypeNode = branchNode("isArray", typeNode);
+            match(["[", "]"], arrTypeNode);
+        }
         let name = token;
         let idNode = branchNode("ID", node);
         match(["ID"], idNode, false);
@@ -1407,16 +1403,17 @@ function parse(token, pgrmNum) {
         switch (token.name) {
             case "INT":
                 match(["int"], node);
-                return;
+                break;
             case "STRING":
                 match(["string"], node);
-                return;
+                break;
             case "BOOLEAN":
                 match(["boolean"], node);
-                return;
+                break;
             default:
                 throw error(`Expected TYPE token, found ${token.name} at line: ${token.line} col: ${token.col}`);
         }
+        return node;
     }
     function parseWhileStatement(parent) {
         Log.ParseMsg("parseWhileStatement()");
@@ -1448,6 +1445,9 @@ function parse(token, pgrmNum) {
             case "BOOLVAL":
                 parseBooleanExpr(node);
                 return;
+            case "LBRACK":
+                parseArrayExpr(node);
+                return;
             case "ID":
                 if (token.next.name === "ADD") {
                     throw error(`Variable '${token.symbol}' found at line: ${token.line} ` +
@@ -1459,6 +1459,37 @@ function parse(token, pgrmNum) {
                 return;
             default:
                 throw error(`Expected Expr, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
+        }
+    }
+    function parseArrayExpr(parent) {
+        Log.ParseMsg("parseArrayExpr()");
+        let node = branchNode("ArrayExpr", parent);
+        match(["["], node);
+        if (token.name === "LEN") {
+            let lenNode = branchNode("Length", node);
+            match(["LEN", "DIGIT"], lenNode, false);
+            match(["]"], node);
+            return;
+        }
+        parseElemList(node);
+        match(["]"], node);
+    }
+    function parseElemList(parent) {
+        Log.ParseMsg("parseElemList()");
+        let elemList = branchNode("ElemList", parent);
+        if (token.symbol === "]") {
+            return;
+        }
+        constrElemList();
+        function constrElemList() {
+            parseExpr(elemList);
+            if (token.symbol === "]") {
+                return;
+            }
+            else {
+                match([","], elemList);
+                constrElemList();
+            }
         }
     }
     function parseStringExpr(parent) {
@@ -2021,9 +2052,9 @@ class SymbolTable extends BaseNode {
             parent.addChild(this);
         }
     }
-    insert(nameTok, typeTok) {
-        this.table[nameTok.symbol] = { nameTok: nameTok, typeTok: typeTok,
-            initialized: false, used: false };
+    insert(nameTok, typeTok, isArray = false) {
+        this.table[nameTok.symbol] = { nameTok: nameTok, typeTok: typeTok, used: false,
+            initialized: false, isArray: isArray };
     }
     setLocation(varName, addr) {
         this.memTable[varName] = { loc: addr };

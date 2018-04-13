@@ -108,7 +108,11 @@ function parse(token: Token, pgrmNum: number): TNode {
     Log.ParseMsg("parseVarDecl()");
     let node = branchNode("VarDecl", parent);
     let type = token;
-    parseType(node);
+    let typeNode = parseType(node);
+    if (token.name === "LBRACK") {
+      let arrTypeNode = branchNode("isArray", typeNode);
+      match(["[","]"], arrTypeNode);
+    }
     let name = token;
     let idNode = branchNode("ID", node);
     match(["ID"], idNode, false);
@@ -118,22 +122,23 @@ function parse(token: Token, pgrmNum: number): TNode {
     }
   }
 
-  function parseType(parent: TNode) {
+  function parseType(parent: TNode): TNode {
     Log.ParseMsg("parseType()");
     let node = branchNode("Type", parent);
     switch (token.name) {
       case "INT":
         match(["int"], node);
-        return;
+        break;
       case "STRING":
         match(["string"], node);
-        return;
+        break;
       case "BOOLEAN":
         match(["boolean"], node);
-        return;
+        break;
       default:
         throw error(`Expected TYPE token, found ${token.name} at line: ${token.line} col: ${token.col}`);
     }
+    return node;
   }
 
   function parseWhileStatement(parent: TNode) {
@@ -168,6 +173,9 @@ function parse(token: Token, pgrmNum: number): TNode {
       case "BOOLVAL":
         parseBooleanExpr(node);
         return;
+      case "LBRACK":
+        parseArrayExpr(node);
+        return;
       case "ID":
         if (token.next.name === "ADD") {
           throw error(`Variable '${token.symbol}' found at line: ${token.line} ` +
@@ -179,6 +187,39 @@ function parse(token: Token, pgrmNum: number): TNode {
         return;
       default:
         throw error(`Expected Expr, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
+    }
+  }
+
+  function parseArrayExpr(parent: TNode) {
+    Log.ParseMsg("parseArrayExpr()");
+    let node = branchNode("ArrayExpr", parent);
+    match(["["], node);
+    if (token.name === "LEN") {
+      let lenNode = branchNode("Length", node);
+      match(["LEN","DIGIT"], lenNode, false);
+      match(["]"], node);
+      return;
+    }
+    parseElemList(node);
+    match(["]"], node);
+  }
+
+  function parseElemList(parent: TNode) {
+    Log.ParseMsg("parseElemList()");
+    let elemList = branchNode("ElemList", parent);
+    if (token.symbol === "]") {
+      return;
+    }
+    constrElemList();
+
+    function constrElemList() {
+      parseExpr(elemList);
+      if (token.symbol === "]") {
+        return;
+      } else {
+        match([","], elemList);
+        constrElemList();
+      }
     }
   }
 

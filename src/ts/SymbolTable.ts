@@ -11,9 +11,9 @@ class SymbolTable extends BaseNode {
     }
   }
 
-  public insert(nameTok: Token, typeTok: Token) {
-    this.table[nameTok.symbol] = {nameTok:nameTok, typeTok:typeTok,
-                                  initialized:false, used:false};
+  public insert(nameTok: Token, typeTok: Token, isArray: boolean = false) {
+    this.table[nameTok.symbol] = {nameTok:nameTok, typeTok:typeTok, used:false,
+                                  initialized:false, isArray:isArray};
   }
 
   public setLocation(varName: string, addr: string[]) {
