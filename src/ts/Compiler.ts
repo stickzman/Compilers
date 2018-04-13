@@ -16,11 +16,6 @@ function compile() {
   let hexDiv = document.getElementById("hexDiv");
   let loadDiv = document.getElementById("loading");
   let hexDisplay = <HTMLInputElement>document.getElementById("hexCode");
-  /*
-  loadDiv.style.display = "block";
-  hexDiv.style.display = "none";
-  hexDisplay.value = "";
-  */
 
   Log.clear();
 
@@ -66,11 +61,12 @@ function compile() {
     if (semRes === null) {continue;}
     Log.breakLine();
     Log.print("Generating code for Program " + (i+1) + "...");
-    let codeArr = genCode(semRes[0], semRes[1], memTable, i+1);
-    byteCode = byteCode.concat(codeArr);
+    //let codeArr = genCode(semRes[0], semRes[1], memTable, i+1);
+    //byteCode = byteCode.concat(codeArr);
   }
   if (byteCode.length === 0) {
     loadDiv.style.display = "none";
+    Log.scrollToBottom();
     return;
   }
   //Perform backpatching and display machine code

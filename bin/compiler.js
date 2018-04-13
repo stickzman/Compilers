@@ -514,11 +514,6 @@ function compile() {
     let hexDiv = document.getElementById("hexDiv");
     let loadDiv = document.getElementById("loading");
     let hexDisplay = document.getElementById("hexCode");
-    /*
-    loadDiv.style.display = "block";
-    hexDiv.style.display = "none";
-    hexDisplay.value = "";
-    */
     Log.clear();
     //Split source code of programs
     let pgrms = source.split("$");
@@ -569,11 +564,12 @@ function compile() {
         }
         Log.breakLine();
         Log.print("Generating code for Program " + (i + 1) + "...");
-        let codeArr = genCode(semRes[0], semRes[1], memTable, i + 1);
-        byteCode = byteCode.concat(codeArr);
+        //let codeArr = genCode(semRes[0], semRes[1], memTable, i+1);
+        //byteCode = byteCode.concat(codeArr);
     }
     if (byteCode.length === 0) {
         loadDiv.style.display = "none";
+        Log.scrollToBottom();
         return;
     }
     //Perform backpatching and display machine code
@@ -1377,6 +1373,11 @@ function parse(token, pgrmNum) {
         let node = branchNode("AssignStatement", parent);
         let idNode = branchNode("ID", node);
         match(["ID"], idNode, false);
+        if (token.symbol === "[") {
+            match(["["], idNode);
+            match(["DIGIT"], idNode, false);
+            match(["]"], idNode);
+        }
         match(["="], node);
         parseExpr(node);
     }
@@ -1456,6 +1457,11 @@ function parse(token, pgrmNum) {
                 }
                 let idNode = branchNode("ID", node);
                 match(["ID"], idNode, false);
+                if (token.symbol === "[") {
+                    match(["["], idNode);
+                    match(["DIGIT"], idNode, false);
+                    match(["]"], idNode);
+                }
                 return;
             default:
                 throw error(`Expected Expr, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
@@ -1754,24 +1760,39 @@ function analyze(token, pgrmNum) {
                 analyzeBoolExpr(parent, scope);
                 break;
             case "ID":
-                Log.SemMsg(`Scope-checking variable '${token.symbol}'...`);
-                //SymbolTable lookup
-                let symEntry = getSymEntry(token, scope);
-                if (!symEntry.initialized) {
-                    numWarns++;
-                    Log.breakLine();
-                    Log.SemMsg(`Utilizing unintialized variable ` +
-                        `'${token.symbol}' at line: ${token.line} col: ${token.col}`, LogPri.WARNING);
-                    Log.breakLine();
-                }
-                symEntry.used = true;
-                parent.addChild(new TNode(token.symbol, token));
-                token = token.next;
+                analyzeIdExpr(parent, scope);
                 break;
             default:
                 //This should never be called.
                 throw error(`Cannot start Expression with [${token.name}] ` +
                     `at ${token.line}:${token.col}`);
+        }
+    }
+    function analyzeIdExpr(parent, scope) {
+        Log.SemMsg(`Scope-checking variable '${token.symbol}'...`);
+        //SymbolTable lookup
+        let symEntry = getSymEntry(token, scope);
+        if (!symEntry.initialized) {
+            numWarns++;
+            Log.breakLine();
+            Log.SemMsg(`Utilizing unintialized variable ` +
+                `'${token.symbol}' at line: ${token.line} col: ${token.col}`, LogPri.WARNING);
+            Log.breakLine();
+        }
+        symEntry.used = true;
+        Log.SemMsg(`Adding ${symEntry.typeTok.name} '${token.symbol}' to AST...`);
+        let idNode = branchNode("ID", parent);
+        idNode.addChild(new TNode(token.symbol, token));
+        token = token.next;
+        if (token.symbol === "[") {
+            discard(["["]);
+            if (parseInt(token.symbol) > symEntry.arrLen - 1) {
+                throw error(`Index out of bounds for array '${symEntry.nameTok.symbol}' at ` +
+                    `line: ${token.line} col: ${token.col}`);
+            }
+            idNode.addChild(new TNode(token.symbol, token));
+            token = token.next;
+            discard(["]"]);
         }
     }
     function analyzeArrayExpr(parent, scope) {
@@ -1783,16 +1804,18 @@ function analyze(token, pgrmNum) {
             node.addChild(new TNode(token.symbol, token));
             token = token.next;
             discard(["]"]);
-            return;
+            return null;
         }
-        analyzeElemList(node, scope);
+        let type = analyzeElemList(node, scope);
         discard(["]"]);
+        return type;
     }
     function analyzeElemList(parent, scope) {
         Log.SemMsg("Adding Elem List to AST...");
         let node = branchNode("ELEM_LIST", parent);
         let type = getValType(token, scope);
         addToElemList();
+        return type;
         function addToElemList() {
             if (token.symbol === "]") {
                 return;
@@ -1824,15 +1847,19 @@ function analyze(token, pgrmNum) {
             if (token.name === "ID") {
                 //Type-Check
                 let symEntry = getSymEntry(token, scope);
-                Log.SemMsg(`Type-checking ${symEntry.typeTok.name} '${symEntry.nameTok.symobl}...'`);
+                Log.SemMsg(`Type-checking ${symEntry.typeTok.name} '${symEntry.nameTok.symbol}...'`);
                 let type = symEntry.typeTok.name;
                 if (type !== "INT") {
                     throw error(`Type Mismatch: Attempted to add [${type}] ` +
                         `to [DIGIT] at line: ${token.line} col: ${token.col}`);
                 }
+                else if (symEntry.isArray() && token.next.symbol !== "[") {
+                    throw error(`Cannot add ARRAY '${token.symbol}' to Add Expr ` +
+                        `at line: ${token.line} col: ${token.col}`);
+                }
             }
             else if (token.name !== "DIGIT") {
-                //Not a DIGIT or a integer variable
+                //Not a DIGIT or an integer variable
                 throw error(`Type Mismatch: Attempted to add [${token.name}] ` +
                     `to [DIGIT] at line: ${token.line} col: ${token.col}`);
             }
@@ -1872,57 +1899,99 @@ function analyze(token, pgrmNum) {
         //Type-checking
         let type = symEntry.typeTok.name;
         Log.SemMsg(`Type-checking ${type} '${token.symbol}' assignment...`);
-        let value = token.next.next;
-        switch (value.name) {
-            case "LBRACK":
-                //Array
+        let value;
+        let isSingleElem = !symEntry.isArray();
+        if (token.next.symbol === "[") {
+            if (symEntry.isArray()) {
+                value = token.next.next.next.next.next;
+                isSingleElem = true;
+            }
+            else {
+                throw error(`Trying to select index in non-array variable '${token.symbol}' ` +
+                    `at line: ${token.line} col: ${token.col}`);
+            }
+        }
+        else {
+            value = token.next.next;
+        }
+        if (value.name === "ID") {
+            if (scope.lookup(value.symbol).isArray && value.next.symbol !== "[") {
                 if (!symEntry.isArray()) {
-                    throw typeError(symEntry, value, "ARRAY");
+                    throw error("Trying to assign array to non-array variable " +
+                        `'${token.symbol}' at line: ${token.line} col: ${token.col}.`);
                 }
-                if (getValType(value.next, scope) !== type) {
-                    throw typeError(symEntry, value, getValType(value.next, scope));
+                if (isSingleElem) {
+                    throw error("Trying to assign array to a single element at " +
+                        `line: ${token.line} col: ${token.col}.`);
                 }
-                break;
-            case "DIGIT":
-                //IntExpr
-                if (type !== "INT") {
-                    throw typeError(symEntry, value, "INT");
+            }
+            else {
+                if (!isSingleElem) {
+                    throw error("Trying to assign single element to array variable " +
+                        `'${token.symbol}' at line: ${token.line} col: ${token.col}.`);
                 }
-                break;
-            case "QUOTE":
-                //StringExpr
-                if (type !== "STRING") {
-                    throw typeError(symEntry, value.next, "STRING");
-                }
-                break;
-            case "BOOLVAL":
-                //BooleanExpr
-                if (type !== "BOOLEAN") {
-                    throw typeError(symEntry, value, "BOOLEAN");
-                }
-                break;
-            case "LPAREN":
-                //BooleanExpr
-                if (type !== "BOOLEAN") {
-                    throw typeError(symEntry, value, "BOOLEAN", false);
-                }
-                break;
-            case "ID":
-                let valEntry = getSymEntry(value, scope);
-                if (valEntry.typeTok.name !== type) {
-                    throw typeError(symEntry, value, valEntry.typeTok.name);
-                }
-                break;
+            }
+        }
+        if (getValType(value, scope) !== "EMPTY_ARR" && getValType(value, scope) !== type) {
+            throw typeError(symEntry, value, getValType(value, scope), false);
+        }
+        if (value.symbol === "[") {
+            if (!symEntry.isArray()) {
+                throw error("Trying to assign array to non-array variable " +
+                    `'${token.symbol}' at line: ${token.line} col: ${token.col}.`);
+            }
+            if (isSingleElem) {
+                throw error("Trying to assign array to a single element at " +
+                    `line: ${token.line} col: ${token.col}.`);
+            }
+        }
+        else {
+            if (!isSingleElem) {
+                throw error("Trying to assign single element to array variable " +
+                    `'${token.symbol}' at line: ${token.line} col: ${token.col}.`);
+            }
         }
         let node = branchNode("ASSIGN", parent);
         //ID
-        node.addChild(new TNode(token.symbol, token));
+        let idNode = branchNode("ID", node);
+        idNode.addChild(new TNode(token.symbol, token));
         token = token.next;
+        if (token.symbol === "[") {
+            discard(["["]);
+            if (symEntry.arrLen < parseInt(token.symbol) + 1) {
+                throw error(`Index out of bounds for array '${symEntry.nameTok.symbol}' at ` +
+                    `line: ${token.line} col: ${token.col}`);
+            }
+            idNode.addChild(new TNode(token.symbol, token));
+            token = token.next;
+            discard(["]"]);
+        }
         discard(["="]);
+        if (token.symbol === "[") {
+            symEntry.arrLen = getArrLength(token);
+        }
         //VALUE
         analyzeExpr(node, scope);
         //Initialize variable
         symEntry.initialized = true;
+    }
+    function getArrLength(tok) {
+        if (tok.next.name === "LEN") {
+            return parseInt(tok.next.next.symbol);
+        }
+        else {
+            let acc = 0;
+            if (tok.next.symbol !== "]") {
+                acc++;
+            }
+            while (tok.symbol !== "]") {
+                if (tok.symbol === ",") {
+                    acc++;
+                }
+                tok = tok.next;
+            }
+            return acc;
+        }
     }
     function analyzeVarDecl(parent, scope) {
         Log.SemMsg("Adding Variable Declaration to AST...");
@@ -1931,10 +2000,10 @@ function analyze(token, pgrmNum) {
         node.addChild(new TNode(token.symbol, token));
         let type = token;
         token = token.next;
-        //isArray
-        let isArray = false;
-        if (token.name === "LEN") {
-            isArray = true;
+        //Array Length (if any)
+        let arrLength = -1;
+        if (token.name === "LBRACK") {
+            arrLength = 0;
             discard(["[", "]"]);
         }
         //ID
@@ -1947,7 +2016,7 @@ function analyze(token, pgrmNum) {
                 `line: ${name.line} col: ${name.col}`);
         }
         Log.SemMsg(`Adding ${type.name} '${name.symbol}' to SymbolTable...`);
-        scope.insert(name, type, isArray);
+        scope.insert(name, type, arrLength);
     }
     function analyzeWhileStatement(parent, scope) {
         Log.SemMsg("Adding While Loop to AST...");
@@ -1997,6 +2066,12 @@ function analyze(token, pgrmNum) {
                 return "BOOLEAN";
             case "LPAREN":
                 return "BOOLEAN";
+            case "LBRACK":
+                return getValType(tok.next, sTable);
+            case "LEN":
+                return "EMPTY_ARR";
+            case "RBRACK":
+                return "EMPTY_ARR";
             case "ID":
                 return sTable.getType(tok.symbol);
             default:
@@ -2123,9 +2198,17 @@ class SymbolTable extends BaseNode {
             parent.addChild(this);
         }
     }
-    insert(nameTok, typeTok, isArray = false) {
-        this.table[nameTok.symbol] = { nameTok: nameTok, typeTok: typeTok, used: false,
-            initialized: false, isArray: isArray };
+    insert(nameTok, typeTok, arrLen = -1) {
+        this.table[nameTok.symbol] = {
+            nameTok: nameTok,
+            typeTok: typeTok,
+            used: false,
+            initialized: false,
+            arrLen: arrLen,
+            isArray: function () {
+                return this.arrLen > -1;
+            }
+        };
     }
     setLocation(varName, addr) {
         this.memTable[varName] = { loc: addr };

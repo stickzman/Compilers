@@ -100,6 +100,11 @@ function parse(token: Token, pgrmNum: number): TNode {
     let node = branchNode("AssignStatement", parent);
     let idNode = branchNode("ID", node);
     match(["ID"], idNode, false);
+    if (token.symbol === "[") {
+      match(["["], idNode);
+      match(["DIGIT"], idNode, false);
+      match(["]"], idNode);
+    }
     match(["="], node);
     parseExpr(node);
   }
@@ -184,6 +189,11 @@ function parse(token: Token, pgrmNum: number): TNode {
         }
         let idNode = branchNode("ID", node);
         match(["ID"], idNode, false);
+        if (token.symbol === "[") {
+          match(["["], idNode);
+          match(["DIGIT"], idNode, false);
+          match(["]"], idNode);
+        }
         return;
       default:
         throw error(`Expected Expr, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
