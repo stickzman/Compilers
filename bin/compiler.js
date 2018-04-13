@@ -1733,6 +1733,9 @@ function analyze(token, pgrmNum) {
     }
     function analyzeExpr(parent, scope) {
         switch (token.name) {
+            case "LBRACK":
+                analyzeArrayExpr(parent, scope);
+                break;
             case "DIGIT":
                 analyzeAddExpr(parent, scope);
                 break;
@@ -1769,6 +1772,42 @@ function analyze(token, pgrmNum) {
                 //This should never be called.
                 throw error(`Cannot start Expression with [${token.name}] ` +
                     `at ${token.line}:${token.col}`);
+        }
+    }
+    function analyzeArrayExpr(parent, scope) {
+        Log.SemMsg("Adding Array Expr to AST...");
+        let node = branchNode("ARRAY", parent);
+        discard(["["]);
+        if (token.name === "LEN") {
+            discard(["~"]);
+            node.addChild(new TNode(token.symbol, token));
+            discard(["]"]);
+            return;
+        }
+        analyzeElemList(node, scope);
+        discard(["]"]);
+    }
+    function analyzeElemList(parent, scope) {
+        Log.SemMsg("Adding Elem List to AST...");
+        let node = branchNode("ELEM_LIST", parent);
+        let type = getValType(token, scope);
+        addToElemList();
+        function addToElemList() {
+            if (token.symbol === "]") {
+                return;
+            }
+            if (getValType(token, scope) !== type) {
+                throw error(`Mixed array type found at line: ${token.line} col: ${token.col}. ` +
+                    "All array elements must be of the same type.");
+            }
+            analyzeExpr(node, scope);
+            if (token.symbol === "]") {
+                return;
+            }
+            else {
+                discard([","]);
+                addToElemList();
+            }
         }
     }
     function analyzeAddExpr(parent, scope) {
@@ -1834,6 +1873,15 @@ function analyze(token, pgrmNum) {
         Log.SemMsg(`Type-checking ${type} '${token.symbol}' assignment...`);
         let value = token.next.next;
         switch (value.name) {
+            case "LBRACK":
+                //Array
+                if (!symEntry.isArray()) {
+                    throw typeError(symEntry, value, "ARRAY");
+                }
+                if (getValType(value.next, scope) !== type) {
+                    throw typeError(symEntry, value, getValType(value.next, scope));
+                }
+                break;
             case "DIGIT":
                 //IntExpr
                 if (type !== "INT") {
@@ -1882,6 +1930,12 @@ function analyze(token, pgrmNum) {
         node.addChild(new TNode(token.symbol, token));
         let type = token;
         token = token.next;
+        //isArray
+        let isArray = false;
+        if (token.name === "LEN") {
+            isArray = true;
+            discard(["[", "]"]);
+        }
         //ID
         node.addChild(new TNode(token.symbol, token));
         let name = token;
@@ -1892,7 +1946,7 @@ function analyze(token, pgrmNum) {
                 `line: ${name.line} col: ${name.col}`);
         }
         Log.SemMsg(`Adding ${type.name} '${name.symbol}' to SymbolTable...`);
-        scope.insert(name, type);
+        scope.insert(name, type, isArray);
     }
     function analyzeWhileStatement(parent, scope) {
         Log.SemMsg("Adding While Loop to AST...");
@@ -1931,6 +1985,22 @@ function analyze(token, pgrmNum) {
                 `found at line: ${tok.line} col: ${tok.col}`);
         }
         return symEntry;
+    }
+    function getValType(tok, sTable) {
+        switch (tok.name) {
+            case "DIGIT":
+                return "INT";
+            case "QUOTE":
+                return "STRING";
+            case "BOOLVAL":
+                return "BOOLEAN";
+            case "LPAREN":
+                return "BOOLEAN";
+            case "ID":
+                return sTable.getType(tok.symbol);
+            default:
+                return null;
+        }
     }
     //Create custom Error object
     function error(msg) {
