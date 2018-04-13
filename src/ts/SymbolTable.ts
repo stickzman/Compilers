@@ -2,6 +2,7 @@
 class SymbolTable extends BaseNode {
 
   public table: HashTable = {};
+  public memTable: HashTable = {};
 
   constructor(parent?: SymbolTable) {
     super(null)
@@ -15,12 +16,12 @@ class SymbolTable extends BaseNode {
                                   initialized:false, used:false};
   }
 
-  public setLocation(varName: string, loc: string[]) {
-    this.lookup(varName).memLoc = loc;
+  public setLocation(varName: string, addr: string[]) {
+    this.memTable[varName] = {loc: addr};
   }
 
   public getLocation(varName: string) {
-    return this.lookup(varName).memLoc;
+    return this.lookupMemEntry(varName).loc;
   }
 
   public getType(varName: string): string {
@@ -37,6 +38,21 @@ class SymbolTable extends BaseNode {
     //Search in this scope first, then search up the tree
     while (node !== null) {
       entry = node.table[name];
+       if (entry === undefined) {
+         node = <SymbolTable>node.parent;
+       } else {
+         return entry;
+       }
+    }
+    return undefined;
+  }
+
+  public lookupMemEntry(name: string) {
+    let node: SymbolTable = this;
+    let entry;
+    //Search in this scope first, then search up the tree
+    while (node !== null) {
+      entry = node.memTable[name];
        if (entry === undefined) {
          node = <SymbolTable>node.parent;
        } else {

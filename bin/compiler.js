@@ -1981,6 +1981,7 @@ class SymbolTable extends BaseNode {
     constructor(parent) {
         super(null);
         this.table = {};
+        this.memTable = {};
         if (parent !== undefined) {
             parent.addChild(this);
         }
@@ -1989,11 +1990,11 @@ class SymbolTable extends BaseNode {
         this.table[nameTok.symbol] = { nameTok: nameTok, typeTok: typeTok,
             initialized: false, used: false };
     }
-    setLocation(varName, loc) {
-        this.lookup(varName).memLoc = loc;
+    setLocation(varName, addr) {
+        this.memTable[varName] = { loc: addr };
     }
     getLocation(varName) {
-        return this.lookup(varName).memLoc;
+        return this.lookupMemEntry(varName).loc;
     }
     getType(varName) {
         let entry = this.lookup(varName);
@@ -2008,6 +2009,21 @@ class SymbolTable extends BaseNode {
         //Search in this scope first, then search up the tree
         while (node !== null) {
             entry = node.table[name];
+            if (entry === undefined) {
+                node = node.parent;
+            }
+            else {
+                return entry;
+            }
+        }
+        return undefined;
+    }
+    lookupMemEntry(name) {
+        let node = this;
+        let entry;
+        //Search in this scope first, then search up the tree
+        while (node !== null) {
+            entry = node.memTable[name];
             if (entry === undefined) {
                 node = node.parent;
             }
