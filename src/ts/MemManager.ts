@@ -6,6 +6,7 @@ class MemoryManager {
   private reservedTable: HashTable = {};
   private staticTable: HashTable = {};
   private jumpTable: HashTable = {};
+  private stringTable: HashTable = {};
   private jumpTableLen = 0;
   private staticLength = 0;
   private heapLength = 0;
@@ -33,7 +34,7 @@ class MemoryManager {
   public getFalseString(): [string, string] {
     if (this.reservedTable["FS XX"] === undefined) {
       //Add hexdata for "false" string in heap. Store pointer in reservedTable
-      let addr = this.allocateHeap("66 61 6C 73 65 00");
+      let addr = this.allocateString("false");
       this.reservedTable["FS XX"] = {loc: "", data: addr};
     }
     return ["FS","XX"];
@@ -42,7 +43,7 @@ class MemoryManager {
   public getTrueString(): [string, string] {
     if (this.reservedTable["TS XX"] === undefined) {
       //Add hexdata for "true" string in heap. Store pointer in reservedTable
-      let addr = this.allocateHeap("74 72 75 65 00");
+      let addr = this.allocateString("true");
       this.reservedTable["TS XX"] = {loc: "", data: addr};
     }
     return ["TS","XX"];
@@ -67,6 +68,23 @@ class MemoryManager {
     let addr = "H" + this.heapLength++; //Create placeholder address
     this.heap[addr] = {data: hexData, loc: ""};
     return addr;
+  }
+
+  public allocateString(str: string): string {
+    if (this.stringTable[str] === undefined) {
+      let hexData = "";
+      //Convert string into series of hexCodes
+      for (let i = 0; i < str.length; i++) {
+        hexData += str.charCodeAt(i).toString(16) + " ";
+      }
+      //Add NULL string terminator
+      hexData += "00";
+      let addr = this.allocateHeap(hexData);
+      this.stringTable[str] = addr;
+      return addr;
+    } else {
+      return this.stringTable[str];
+    }
   }
 
   public newJumpPoint() {

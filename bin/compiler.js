@@ -218,26 +218,11 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         if (expr2.name === "BOOL_EXPR") {
             addr2 = evalStoreBool(expr2, sTable);
         }
-        //Check there are no strings in expression
-        //TODO: Implement string comparison
-        //----------------------------------
+        //Check there are no strings literals in expression
+        //TODO: Implement string literal comparison
         if (expr1.name === "CHARLIST" || expr2.name === "CHARLIST") {
-            throw error("String comparison not currently supported.");
+            throw error("String literals comparison not currently supported.");
         }
-        if (/^[a-z]$/.test(expr1.name)) {
-            let type = sTable.getType(expr1.name);
-            if (type === "STRING") {
-                throw error("String comparison not currently supported.");
-            }
-        }
-        if (/^[a-z]$/.test(expr2.name)) {
-            let type = sTable.getType(expr2.name);
-            if (type === "STRING") {
-                throw error("String comparison not currently supported.");
-            }
-        }
-        //-----------------------------------
-        //Continue with expression evaluation
         if (addr === null && addr2 === null) {
             //No nested boolExpr, carry on as usual
             if (/^[0-9]$/.test(expr1.name)) {
@@ -364,15 +349,8 @@ function genCode(AST, sTree, memManager, pgrmNum) {
     function parseCharList(node) {
         let str = node.children[0].name;
         Log.GenMsg(`Allocating memory in Heap for string "${str}"...`);
-        let hexData = "";
-        //Convert string into series of hexCodes
-        for (let i = 0; i < str.length; i++) {
-            hexData += str.charCodeAt(i).toString(16) + " ";
-        }
-        //Add NULL string terminator
-        hexData += "00";
         //Allocate heap space and return placeholder addr
-        return memManager.allocateHeap(hexData);
+        return memManager.allocateString(str);
     }
     //Assuming Z is set with result of evaulation, prints "true"/"false"
     //isEqual denotes whether the boolOp was == or not
@@ -1085,6 +1063,7 @@ class MemoryManager {
         this.reservedTable = {};
         this.staticTable = {};
         this.jumpTable = {};
+        this.stringTable = {};
         this.jumpTableLen = 0;
         this.staticLength = 0;
         this.heapLength = 0;
@@ -1108,7 +1087,7 @@ class MemoryManager {
     getFalseString() {
         if (this.reservedTable["FS XX"] === undefined) {
             //Add hexdata for "false" string in heap. Store pointer in reservedTable
-            let addr = this.allocateHeap("66 61 6C 73 65 00");
+            let addr = this.allocateString("false");
             this.reservedTable["FS XX"] = { loc: "", data: addr };
         }
         return ["FS", "XX"];
@@ -1116,7 +1095,7 @@ class MemoryManager {
     getTrueString() {
         if (this.reservedTable["TS XX"] === undefined) {
             //Add hexdata for "true" string in heap. Store pointer in reservedTable
-            let addr = this.allocateHeap("74 72 75 65 00");
+            let addr = this.allocateString("true");
             this.reservedTable["TS XX"] = { loc: "", data: addr };
         }
         return ["TS", "XX"];
@@ -1139,6 +1118,23 @@ class MemoryManager {
         let addr = "H" + this.heapLength++; //Create placeholder address
         this.heap[addr] = { data: hexData, loc: "" };
         return addr;
+    }
+    allocateString(str) {
+        if (this.stringTable[str] === undefined) {
+            let hexData = "";
+            //Convert string into series of hexCodes
+            for (let i = 0; i < str.length; i++) {
+                hexData += str.charCodeAt(i).toString(16) + " ";
+            }
+            //Add NULL string terminator
+            hexData += "00";
+            let addr = this.allocateHeap(hexData);
+            this.stringTable[str] = addr;
+            return addr;
+        }
+        else {
+            return this.stringTable[str];
+        }
     }
     newJumpPoint() {
         let jp = "J" + this.jumpTableLen++; //Create placeholder address

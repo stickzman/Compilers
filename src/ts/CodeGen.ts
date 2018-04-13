@@ -229,26 +229,11 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     if (expr2.name === "BOOL_EXPR") {
       addr2 = evalStoreBool(expr2, sTable);
     }
-    //Check there are no strings in expression
-    //TODO: Implement string comparison
-    //----------------------------------
+    //Check there are no strings literals in expression
+    //TODO: Implement string literal comparison
     if (expr1.name === "CHARLIST" || expr2.name === "CHARLIST") {
-      throw error("String comparison not currently supported.");
+      throw error("String literals comparison not currently supported.");
     }
-    if (/^[a-z]$/.test(expr1.name)) {
-      let type = sTable.getType(expr1.name);
-      if (type === "STRING") {
-        throw error("String comparison not currently supported.");
-      }
-    }
-    if (/^[a-z]$/.test(expr2.name)) {
-      let type = sTable.getType(expr2.name);
-      if (type === "STRING") {
-        throw error("String comparison not currently supported.");
-      }
-    }
-    //-----------------------------------
-    //Continue with expression evaluation
     if (addr === null && addr2 === null) {
       //No nested boolExpr, carry on as usual
       if (/^[0-9]$/.test(expr1.name)) {
@@ -366,15 +351,8 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
   function parseCharList(node: TNode): string {
     let str = node.children[0].name;
     Log.GenMsg(`Allocating memory in Heap for string "${str}"...`);
-    let hexData = "";
-    //Convert string into series of hexCodes
-    for (let i = 0; i < str.length; i++) {
-      hexData += str.charCodeAt(i).toString(16) + " ";
-    }
-    //Add NULL string terminator
-    hexData += "00";
     //Allocate heap space and return placeholder addr
-    return memManager.allocateHeap(hexData);
+    return memManager.allocateString(str);
   }
 
   //Assuming Z is set with result of evaulation, prints "true"/"false"
