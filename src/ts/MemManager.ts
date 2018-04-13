@@ -21,6 +21,15 @@ class MemoryManager {
     return ["FV","XX"];
   }
 
+  public getTrueVal(): [string, string] {
+    if (this.reservedTable["TV XX"] === undefined) {
+      //Initialize a static memory address that will hold a 00
+      //Used as a "false" value for unconditional branching
+      this.reservedTable["TV XX"] = {loc: "", data:"01"};
+    }
+    return ["TV","XX"];
+  }
+
   public getFalseString(): [string, string] {
     if (this.reservedTable["FS XX"] === undefined) {
       //Add hexdata for "false" string in heap. Store pointer in reservedTable

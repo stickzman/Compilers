@@ -90,9 +90,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     let assignNode = node.children[1];
     if (assignNode.name === "ADD") {
       //Perform addition, store result in varAddr
-      let resAdd = parseAdd(assignNode, sTable);
-      byteCode.push("AD",resAdd[0],resAdd[1],"8D",varAddr[0],varAddr[1]);
-      memManager.allowOverwrite(resAdd);
+      parseAdd(assignNode, sTable, varAddr);
       return;
     }
     if (assignNode.name === "CHARLIST") {
@@ -253,7 +251,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     //Continue with expression evaluation
     if (addr === null && addr2 === null) {
       //No nested boolExpr, carry on as usual
-      if (/^[0-9]$/.test(expr1.name) || expr1.name === "true") {
+      if (/^[0-9]$/.test(expr1.name)) {
         loadX(expr1, sTable);
         addr = getSetMem(expr2, sTable);
       } else {
@@ -355,9 +353,7 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
       return parseAdd(node, sTable);
     } else if (node.name === "true") {
       //Load true (01) into Acc, then store
-      let addr = memManager.allocateStatic();
-      byteCode.push("A9","01","8D",addr[0],addr[1]);
-      return addr;
+      return memManager.getTrueVal();
     } else if (node.name === "false") {
       //Location of default "00" (false)
       return memManager.getFalseVal();
@@ -469,17 +465,19 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     }
   }
 
-  function parseAdd(node: TNode, sTable: SymbolTable): string[] {
+  function parseAdd(node: TNode, sTable: SymbolTable, resLoc?: string[]): string[] {
     Log.GenMsg("Parsing Add subtree...");
     let results = optimizeAdd(0, node);
     if (results[0] > 255) {
       throw error("Integer Overflow: result of calculation exceeds maximum " +
                   "storage for integer (1 byte)");
     }
+    if (resLoc === undefined) {
+      resLoc = memManager.allocateStatic();
+    }
     if (/^[a-z]$/.test(results[1])) {
       //The last element is an ID
       let varLoc = sTable.getLocation(results[1]);
-      let resLoc = memManager.allocateStatic();
       //Load accumulated num into Acc, then add value stored in the variable
       byteCode.push("A9",results[0].toString(16).padStart(2, "0"),"6D",varLoc[0],varLoc[1]);
       //Store the result in memory, return the location
@@ -492,10 +490,9 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
         throw error("Integer Overflow: result of calculation exceeds maximum " +
                     "storage for integer (1 byte)");
       }
-      let addr = memManager.allocateStatic();
       //Load the result into Acc, store in memory, return the location
-      byteCode.push("A9",num.toString(16).padStart(2, "0"),"8D",addr[0],addr[1]);
-      return addr;
+      byteCode.push("A9",num.toString(16).padStart(2, "0"),"8D",resLoc[0],resLoc[1]);
+      return resLoc;
     }
 
     //Recursive helper func traverses ADD subtrees, returns rightmost child and
