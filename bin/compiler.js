@@ -733,7 +733,13 @@ function lex(source, lineNum, charNum, pgrmNum) {
         }
         let token;
         //Look for all multi-character tokens using RegExp
-        if (/^print/.test(source)) {
+        if (/^~[0-9]?/.test(source)) {
+            token = createToken("~" + source[1], "ARR_LEN", last, parseInt(source[1]));
+            console.log(token);
+            charNum += 2;
+            getTokens(source.substring(2), token);
+        }
+        else if (/^print/.test(source)) {
             token = createToken("print", "PRINT", last);
             charNum += 5;
             getTokens(source.substring(5), token);
@@ -832,9 +838,24 @@ function lex(source, lineNum, charNum, pgrmNum) {
             return token;
         }
         switch (source.charAt(0)) {
+            case ',':
+                token = createToken(",", "COMMA", last);
+                //Get the rest of the tokens recursively
+                charNum += 1;
+                getTokens(source.substring(1), token);
+                return token;
+            case '[':
+                token = createToken("[", "LBRACK", last);
+                charNum += 1;
+                getTokens(source.substring(1), token);
+                return token;
+            case ']':
+                token = createToken("]", "RBRACK", last);
+                charNum += 1;
+                getTokens(source.substring(1), token);
+                return token;
             case '{':
                 token = createToken("{", "LBRACE", last);
-                //Get the rest of the tokens recursively
                 charNum += 1;
                 getTokens(source.substring(1), token);
                 return token;
