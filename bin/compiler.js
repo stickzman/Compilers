@@ -687,6 +687,8 @@ function loadProgram(name) {
     }
     let source = document.getElementById("source");
     source.value = tests[name];
+    let hexDiv = document.getElementById("hexDiv");
+    hexDiv.style.display = "none";
 }
 //Polyfill for padStart String function
 if (!String.prototype.padStart) {

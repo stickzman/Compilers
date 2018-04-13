@@ -60,6 +60,8 @@ function loadProgram(name: string) {
   if (name === "Select One") {return;}
   let source = <HTMLInputElement>document.getElementById("source");
   source.value = tests[name];
+  let hexDiv = document.getElementById("hexDiv");
+  hexDiv.style.display = "none";
 }
 
 //Polyfill for padStart String function
