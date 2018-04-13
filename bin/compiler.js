@@ -220,9 +220,11 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         }
         //Check there are no strings literals in expression
         //TODO: Implement string literal comparison
+        /*
         if (expr1.name === "CHARLIST" || expr2.name === "CHARLIST") {
-            throw error("String literals comparison not currently supported.");
+          throw error("String literals comparison not currently supported.");
         }
+        */
         if (addr === null && addr2 === null) {
             //No nested boolExpr, carry on as usual
             if (/^[0-9]$/.test(expr1.name)) {
@@ -320,6 +322,11 @@ function genCode(AST, sTree, memManager, pgrmNum) {
             let addr = sTable.getLocation(node.name);
             byteCode.push("AE", addr[0], addr[1]);
         }
+        else if (node.name === "CHARLIST") {
+            //Add the literal to the heap, load pointer into X
+            let addr = parseCharList(node);
+            byteCode.push("A2", addr);
+        }
     }
     //Store value in memory if not already there, then return location address
     function getSetMem(node, sTable) {
@@ -344,6 +351,13 @@ function genCode(AST, sTree, memManager, pgrmNum) {
         else if (/^[a-z]$/.test(node.name)) {
             //Return location of variable value
             return sTable.getLocation(node.name);
+        }
+        else if (node.name === "CHARLIST") {
+            //Allocate string in heap, store pointer, return location of pointer
+            let pointer = parseCharList(node);
+            let addr = memManager.allocateStatic();
+            byteCode.push("A9", pointer, "8D", addr[0], addr[1]);
+            return addr;
         }
     }
     function parseCharList(node) {
