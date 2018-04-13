@@ -296,22 +296,20 @@ function genCode(AST: TNode, sTree: SymbolTable, memManager: MemoryManager,
     let val1: string;
     let val2: string;
     if (evalBoolExpr(node, sTable)) {
-      val1 = "01";
-      val2 = "00";
-    } else {
       val1 = "00";
       val2 = "01";
+    } else {
+      val1 = "01";
+      val2 = "00";
     }
     Log.GenMsg("Storing boolean expression result...");
     if (addr === undefined) {
       //If no place to store the result was given, allocate new memory
       addr = memManager.allocateStatic();
     }
-    //If not equal, jump to writing val2 into memory, otherwise right val1
-    byteCode.push("D0","0C","A9",val1,"8D",addr[0],addr[1]);
-    //Add unconditional branch to skip writing val2 into memory
-    addUnconditionalBranch("05");
-    //Write val2 into memory
+    //Write val1 into memory, if not equal jump to rest of pgrm
+    byteCode.push("A9",val1,"8D",addr[0],addr[1],"D0","05");
+    //otherwise overwrite val1 with val2
     byteCode.push("A9",val2,"8D",addr[0],addr[1]);
     return addr;
   }
