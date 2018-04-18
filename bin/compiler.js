@@ -1946,22 +1946,41 @@ function analyze(token, pgrmNum) {
         discard(["="]);
         let valType = getValType(token, scope);
         if (token.symbol !== "[") {
-            throw error(`Cannot assign single element to ARRAY '${entry.nameTok.symbol}' ` +
-                `at line: ${token.line} col: ${token.col}.`);
+            if (/^[a-z]$/.test(token.symbol)) {
+                //Test if this is variable is an array or single element
+                if (!scope.lookup(token.symbol).isArray() || token.next.symbol === "[") {
+                    throw error(`Cannot assign single element to ARRAY '${entry.nameTok.symbol}' ` +
+                        `at line: ${token.line} col: ${token.col}.`);
+                }
+            }
+            else {
+                throw error(`Cannot assign single element to ARRAY '${entry.nameTok.symbol}' ` +
+                    `at line: ${token.line} col: ${token.col}.`);
+            }
         }
         if (valType !== "EMPTY_ARR" && entry.typeTok.name !== valType) {
             throw error(`Type Mismatch: Cannot assign ${valType} to ${entry.typeTok.name} ` +
                 `'${entry.nameTok.name}' at line: ${token.line} col: ${token.col}.`);
         }
-        let len = getArrLength(token);
-        analyzeArrayExpr(parent, scope);
+        let len = getArrLength(token, scope);
+        if (/^[a-z]$/.test(token.symbol)) {
+            parent.addChild(new TNode(token.symbol, token));
+            token = token.next;
+        }
+        else {
+            analyzeArrayExpr(parent, scope);
+        }
         entry.arrLen = len;
         //Initialize variable
         entry.initialized = true;
     }
-    function getArrLength(tok) {
+    function getArrLength(tok, scope) {
         if (tok.next.name === "LEN") {
             return parseInt(tok.next.next.symbol);
+        }
+        else if (/^[a-z]$/.test(tok.symbol)) {
+            //If its a variable, return array legnth
+            return scope.lookup(tok.symbol).arrLen;
         }
         else {
             let acc = 0;
