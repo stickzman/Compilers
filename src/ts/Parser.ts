@@ -221,7 +221,7 @@ function parseIdExpr(parent: TNode) {
   function parseExprList(parent: TNode) {
     Log.ParseMsg("parseExprList()");
     let node = branchNode("ExprList", parent);
-    let possibleTerminals = ["DIGIT","QUOTE","LPAREN","BOOLVAL","LBRACK","ID"];
+    let possibleTerminals = ["DIGIT","QUOTE","LPAREN","BOOLVAL","ID"];
     if (possibleTerminals.indexOf(token.name) === -1) {
       //Empty ExprList
       return;
@@ -230,6 +230,9 @@ function parseIdExpr(parent: TNode) {
       if (token.name === "COMMA") {
         //Expr, ExprList
         match([","], node);
+        if (token.symbol === "]") {
+          throw error(`Expected Expr, found "]" at line: ${token.line} col: ${token.col}.`);
+        }
         parseExprList(node);
       } else {
         //End of ExprList
