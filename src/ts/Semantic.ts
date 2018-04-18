@@ -226,6 +226,10 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     token = token.next;
     if (token.symbol === "[") {
       discard(["["]);
+      if (!symEntry.isArray()) {
+        throw error(`Variable '${symEntry.nameTok.symbol}' cannot be used as an ` +
+                    `array at line: ${token.line} col: ${token.col}`);
+      }
       if (parseInt(token.symbol) > symEntry.arrLen - 1) {
         throw error(`Index out of bounds for array '${symEntry.nameTok.symbol}' at ` +
                     `line: ${token.line} col: ${token.col}`);
@@ -233,6 +237,9 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
       idNode.addChild(new TNode(token.symbol, token));
       token = token.next;
       discard(["]"]);
+    } else if (symEntry.isArray) {
+      throw error(`Cannot use entire ARRAY '${symEntry.nameTok.symbol}' `+
+                  `within Expression.`);
     }
   }
 
