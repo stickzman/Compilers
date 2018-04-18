@@ -556,16 +556,16 @@ function compile() {
         if (CST === null) {
             continue;
         }
+        /*
         Log.breakLine();
-        Log.print("Analyzing Program " + (i + 1) + "...");
-        let semRes = analyze(tokenLinkedList, i + 1);
-        if (semRes === null) {
-            continue;
-        }
+        Log.print("Analyzing Program " + (i+1) + "...");
+        let semRes = analyze(tokenLinkedList, i+1);
+        if (semRes === null) {continue;}
         Log.breakLine();
-        Log.print("Generating code for Program " + (i + 1) + "...");
-        //let codeArr = genCode(semRes[0], semRes[1], memTable, i+1);
-        //byteCode = byteCode.concat(codeArr);
+        Log.print("Generating code for Program " + (i+1) + "...");
+        let codeArr = genCode(semRes[0], semRes[1], memTable, i+1);
+        byteCode = byteCode.concat(codeArr);
+        */
     }
     if (byteCode.length === 0) {
         loadDiv.style.display = "none";
@@ -1450,21 +1450,24 @@ function parse(token, pgrmNum) {
                 parseArrayExpr(node);
                 return;
             case "ID":
-                if (token.next.name === "ADD") {
-                    throw error(`Variable '${token.symbol}' found at line: ${token.line} ` +
-                        `col: ${token.col}. Variable identifiers can only be used ` +
-                        `as the last element inside of an addition expression`);
-                }
-                let idNode = branchNode("ID", node);
-                match(["ID"], idNode, false);
-                if (token.symbol === "[") {
-                    match(["["], idNode);
-                    match(["DIGIT"], idNode, false);
-                    match(["]"], idNode);
-                }
+                parseIdExpr(node);
                 return;
             default:
                 throw error(`Expected Expr, found '${token.symbol}' at line: ${token.line} col: ${token.col}`);
+        }
+    }
+    function parseIdExpr(parent) {
+        if (token.next.name === "ADD") {
+            throw error(`Variable '${token.symbol}' found at line: ${token.line} ` +
+                `col: ${token.col}. Variable identifiers can only be used ` +
+                `as the last element inside of an addition expression`);
+        }
+        let idNode = branchNode("ID", parent);
+        match(["ID"], idNode, false);
+        if (token.symbol === "[") {
+            match(["["], idNode);
+            match(["DIGIT"], idNode, false);
+            match(["]"], idNode);
         }
     }
     function parseArrayExpr(parent) {
@@ -1477,24 +1480,27 @@ function parse(token, pgrmNum) {
             match(["]"], node);
             return;
         }
-        parseElemList(node);
+        parseExprList(node);
         match(["]"], node);
     }
-    function parseElemList(parent) {
-        Log.ParseMsg("parseElemList()");
-        let elemList = branchNode("ElemList", parent);
-        if (token.symbol === "]") {
+    function parseExprList(parent) {
+        Log.ParseMsg("parseExprList()");
+        let node = branchNode("ExprList", parent);
+        let possibleTerminals = ["DIGIT", "QUOTE", "LPAREN", "BOOLVAL", "LBRACK", "ID"];
+        if (possibleTerminals.indexOf(token.name) === -1) {
+            //Empty ExprList
             return;
         }
-        constrElemList();
-        function constrElemList() {
-            parseExpr(elemList);
-            if (token.symbol === "]") {
-                return;
+        else {
+            parseExpr(node);
+            if (token.name === "COMMA") {
+                //Expr, ExprList
+                match([","], node);
+                parseExprList(node);
             }
             else {
-                match([","], elemList);
-                constrElemList();
+                //End of ExprList
+                return;
             }
         }
     }

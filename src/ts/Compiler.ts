@@ -55,14 +55,16 @@ function compile() {
     Log.print("Parsing Program " + (i+1) + "...");
     let CST = parse(tokenLinkedList, i+1);
     if (CST === null) {continue;}
+    /*
     Log.breakLine();
     Log.print("Analyzing Program " + (i+1) + "...");
     let semRes = analyze(tokenLinkedList, i+1);
     if (semRes === null) {continue;}
     Log.breakLine();
     Log.print("Generating code for Program " + (i+1) + "...");
-    //let codeArr = genCode(semRes[0], semRes[1], memTable, i+1);
-    //byteCode = byteCode.concat(codeArr);
+    let codeArr = genCode(semRes[0], semRes[1], memTable, i+1);
+    byteCode = byteCode.concat(codeArr);
+    */
   }
   if (byteCode.length === 0) {
     loadDiv.style.display = "none";
