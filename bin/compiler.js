@@ -1812,9 +1812,9 @@ function analyze(token, pgrmNum) {
             token = token.next;
             discard(["]"]);
         }
-        else if (symEntry.isArray) {
+        else if (symEntry.isArray()) {
             throw error(`Cannot use entire ARRAY '${symEntry.nameTok.symbol}' ` +
-                `within Expression.`);
+                `within Expression on line: ${token.line} col: ${token.col}.`);
         }
     }
     function analyzeArrayExpr(parent, scope) {
@@ -1924,7 +1924,19 @@ function analyze(token, pgrmNum) {
         }
         let type = entry.typeTok.name;
         //ID Name
-        analyzeIdExpr(node, scope);
+        let idNode = new TNode(token.symbol, token);
+        node.addChild(idNode);
+        token = token.next;
+        if (token.symbol === "[") {
+            discard(["["]);
+            if (parseInt(token.symbol) >= entry.arrLen) {
+                throw error(`Index out of bounds for array '${entry.nameTok.symbol}' ` +
+                    `at line: ${token.line} col: ${token.col}`);
+            }
+            idNode.addChild(new TNode(token.symbol, token));
+            token = token.next;
+            discard(["]"]);
+        }
         discard(["="]);
         //Type-checking
         if (token.symbol === "[") {
@@ -1960,7 +1972,7 @@ function analyze(token, pgrmNum) {
         }
         if (valType !== "EMPTY_ARR" && entry.typeTok.name !== valType) {
             throw error(`Type Mismatch: Cannot assign ${valType} to ${entry.typeTok.name} ` +
-                `'${entry.nameTok.name}' at line: ${token.line} col: ${token.col}.`);
+                `'${entry.nameTok.symbol}' at line: ${token.line} col: ${token.col}.`);
         }
         let len = getArrLength(token, scope);
         if (/^[a-z]$/.test(token.symbol)) {
