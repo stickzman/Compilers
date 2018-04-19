@@ -95,7 +95,6 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
   }
 
   function getBoolType(node: BaseNode, sTable: SymbolTable): string {
-
     switch (node.name) {
       case "true":
         return "BOOLEAN";
@@ -395,7 +394,7 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
       throw error(`Cannot assign single element to ARRAY '${entry.name}' ` +
                   `at line: ${token.line} col: ${token.col}.`);
     }
-    if (valType !== "EMPTY_ARR" && entry.typeTok.name !== valType) {
+    if (entry.typeTok.name !== valType) {
       throw error(`Type Mismatch: Cannot assign ${valType} to ${entry.typeTok.name} ` +
                   `'${entry.name}' at line: ${token.line} col: ${token.col}.`);
     }
@@ -410,11 +409,7 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
   }
 
   function getArrLength(tok: Token, scope: SymbolTable) {
-    let acc = 0;
-    if (tok.next.symbol !== "]") {
-      acc++;
-      tok = tok.next;
-    }
+    let acc = 1;
     while (tok.symbol !== "]") {
       if (tok.symbol === ",") {
         acc++;
@@ -446,6 +441,10 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
       discard(["["]);
       node.addChild(new TNode(token.symbol, token));
       arrLength = parseInt(token.symbol);
+      if (arrLength === 0) {
+        throw error(`Array length must be greater than 0 at line: ${token.line} `+
+                    `col: ${token.col}.`);
+      }
       token = token.next;
       discard(["]"]);
     }
@@ -505,8 +504,6 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
         return "BOOLEAN";
       case "LBRACK":
         return getValType(tok.next, sTable);
-      case "RBRACK":
-        return "EMPTY_ARR";
       case "ID":
         return sTable.getType(tok.symbol);
       default:
