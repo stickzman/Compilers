@@ -18,6 +18,7 @@ class SymbolTable extends BaseNode {
       used:false,
       initialized:false,
       arrLen:arrLen,
+      name: nameTok.symbol,
       isArray: function () {
         return this.arrLen > -1;
       }

@@ -56,11 +56,11 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
       if (!entry.used) {
         numWarns++;
         if (entry.initialized) {
-          Log.SemMsg(`Variable '${entry.nameTok.symbol}' on `+
+          Log.SemMsg(`Variable '${entry.name}' on `+
                     `line: ${entry.nameTok.line} was initialized but never used`,
                     LogPri.WARNING);
         } else {
-          Log.SemMsg(`Variable '${entry.nameTok.symbol}' was `+
+          Log.SemMsg(`Variable '${entry.name}' was `+
                     `declared on line: ${entry.nameTok.line} but never used`,
                     LogPri.WARNING);
         }
@@ -240,18 +240,18 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     if (token.symbol === "[") {
       discard(["["]);
       if (!symEntry.isArray()) {
-        throw error(`Variable '${symEntry.nameTok.symbol}' cannot be used as an ` +
+        throw error(`Variable '${symEntry.name}' cannot be used as an ` +
                     `array at line: ${token.line} col: ${token.col}`);
       }
       if (parseInt(token.symbol) > symEntry.arrLen - 1) {
-        throw error(`Index out of bounds for array '${symEntry.nameTok.symbol}' at ` +
+        throw error(`Index out of bounds for array '${symEntry.name}' at ` +
                     `line: ${token.line} col: ${token.col}`);
       }
       idNode.addChild(new TNode(token.symbol, token));
       token = token.next;
       discard(["]"]);
     } else if (symEntry.isArray()) {
-      throw error(`Cannot use entire ARRAY '${symEntry.nameTok.symbol}' `+
+      throw error(`Cannot use entire ARRAY '${symEntry.name}' `+
                   `within Expression on line: ${token.line} col: ${token.col}.`);
     }
   }
@@ -260,14 +260,6 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     Log.SemMsg("Adding Array Expr to AST...");
     let node = branchNode("ARRAY", parent);
     discard(["["]);
-    if (token.name === "LEN") {
-      let lenNode = branchNode("LEN", node);
-      discard(["~"]);
-      lenNode.addChild(new TNode(token.symbol, token));
-      token = token.next;
-      discard(["]"]);
-      return null;
-    }
     let type = analyzeExprList(node, scope);
     discard(["]"]);
     return type;
@@ -308,7 +300,7 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
       if (token.name === "ID") {
         //Type-Check
         let symEntry = getSymEntry(token, scope);
-        Log.SemMsg(`Type-checking ${symEntry.typeTok.name} '${symEntry.nameTok.symbol}...'`);
+        Log.SemMsg(`Type-checking ${symEntry.typeTok.name} '${symEntry.name}...'`);
         let type = symEntry.typeTok.name;
         if (type !== "INT") {
           throw error(`Type Mismatch: Attempted to add [${type}] ` +
@@ -371,7 +363,7 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     if (token.symbol === "[") {
       discard(["["]);
       if (parseInt(token.symbol) >= entry.arrLen) {
-        throw error(`Index out of bounds for array '${entry.nameTok.symbol}' ` +
+        throw error(`Index out of bounds for array '${entry.name}' ` +
                     `at line: ${token.line} col: ${token.col}`);
       }
       idNode.addChild(new TNode(token.symbol, token));
@@ -381,11 +373,11 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     discard(["="]);
     //Type-checking
     if (token.symbol === "[") {
-      throw error(`Cannot assign ARRAY to ${type} '${entry.nameTok.symbol}'.`);
+      throw error(`Cannot assign ARRAY to ${type} '${entry.name}'.`);
     }
     if (type !== getValType(token, scope)) {
       throw error(`Type Mismatch: Cannot assign ${getValType(token, scope)} ` +
-                  `to ${type} '${entry.nameTok.symbol}'`);
+                  `to ${type} '${entry.name}'`);
     }
     //VALUE
     analyzeExpr(node, scope);
@@ -400,53 +392,36 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     discard(["="]);
     let valType = getValType(token, scope);
     if (token.symbol !== "[") {
-      if (/^[a-z]$/.test(token.symbol)) {
-        //Test if this is variable is an array or single element
-        if (!scope.lookup(token.symbol).isArray() || token.next.symbol === "[") {
-        throw error(`Cannot assign single element to ARRAY '${entry.nameTok.symbol}' ` +
-                    `at line: ${token.line} col: ${token.col}.`);
-        }
-      } else {
-        throw error(`Cannot assign single element to ARRAY '${entry.nameTok.symbol}' ` +
-                    `at line: ${token.line} col: ${token.col}.`);
-      }
+      throw error(`Cannot assign single element to ARRAY '${entry.name}' ` +
+                  `at line: ${token.line} col: ${token.col}.`);
     }
     if (valType !== "EMPTY_ARR" && entry.typeTok.name !== valType) {
       throw error(`Type Mismatch: Cannot assign ${valType} to ${entry.typeTok.name} ` +
-                  `'${entry.nameTok.symbol}' at line: ${token.line} col: ${token.col}.`);
+                  `'${entry.name}' at line: ${token.line} col: ${token.col}.`);
     }
-    let len = getArrLength(token, scope);
-    if (/^[a-z]$/.test(token.symbol)) {
-      parent.addChild(new TNode(token.symbol, token));
-      token = token.next;
-    } else {
-      analyzeArrayExpr(parent, scope);
+    if (entry.arrLen < getArrLength(token, scope)) {
+      throw error(`Cannot assign array of length ${getArrLength(token, scope)} ` +
+                  `to ARRAY '${entry.name}' of length ${entry.arrLen} ` +
+                  `at line: ${token.line} col: ${token.col}.'`)
     }
-    entry.arrLen = len;
+    analyzeArrayExpr(parent, scope);
     //Initialize variable
     entry.initialized = true;
   }
 
   function getArrLength(tok: Token, scope: SymbolTable) {
-    if (tok.next.name === "LEN") {
-      return parseInt(tok.next.next.symbol);
-    } else if (/^[a-z]$/.test(tok.symbol)) {
-      //If its a variable, return array legnth
-      return scope.lookup(tok.symbol).arrLen;
-    } else {
-      let acc = 0;
-      if (tok.next.symbol !== "]") {
-        acc++;
-        tok = tok.next;
-      }
-      while (tok.symbol !== "]") {
-        if (tok.symbol === ",") {
-          acc++;
-        }
-        tok = tok.next;
-      }
-      return acc;
+    let acc = 0;
+    if (tok.next.symbol !== "]") {
+      acc++;
+      tok = tok.next;
     }
+    while (tok.symbol !== "]") {
+      if (tok.symbol === ",") {
+        acc++;
+      }
+      tok = tok.next;
+    }
+    return acc;
   }
 
   function analyzeVarDecl(parent: TNode, scope: SymbolTable) {
@@ -456,12 +431,6 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     node.addChild(new TNode(token.symbol, token));
     let type = token;
     token = token.next;
-    //Array Length (if any)
-    let arrLength = -1;
-    if (token.name === "LBRACK") {
-      arrLength = 0;
-      discard(["[","]"]);
-    }
     //ID
     node.addChild(new TNode(token.symbol, token));
     let name = token;
@@ -470,6 +439,15 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     if (scope.table[name.symbol] !== undefined) {
       throw error(`Attempted to redeclare variable '${name.symbol}' at `+
                   `line: ${name.line} col: ${name.col}`);
+    }
+    //Array Length (if any)
+    let arrLength = -1;
+    if (token.name === "LBRACK") {
+      discard(["["]);
+      node.addChild(new TNode(token.symbol, token));
+      arrLength = parseInt(token.symbol);
+      token = token.next;
+      discard(["]"]);
     }
     Log.SemMsg(`Adding ${type.name} '${name.symbol}' to SymbolTable...`);
     scope.insert(name, type, arrLength);
@@ -527,8 +505,6 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
         return "BOOLEAN";
       case "LBRACK":
         return getValType(tok.next, sTable);
-      case "LEN":
-        return "EMPTY_ARR";
       case "RBRACK":
         return "EMPTY_ARR";
       case "ID":
@@ -552,7 +528,7 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
   function typeError(assignEntry, valToken: Token, valType: string, displayVal: boolean = true) {
     let msg = `Type Mismatch: attempted to assign [${valType}`;
     msg += (displayVal) ? `, ${valToken.symbol}] ` : "] ";
-    msg += `to [${assignEntry.typeTok.name}, ${assignEntry.nameTok.symbol}] ` +
+    msg += `to [${assignEntry.typeTok.name}, ${assignEntry.name}] ` +
             `at line: ${assignEntry.nameTok.line} col: ${assignEntry.nameTok.col}`;
     return error(msg);
   }

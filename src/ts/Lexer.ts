@@ -119,12 +119,6 @@ function lex(source: string, lineNum: number, charNum: number, pgrmNum: number):
     }
 
     switch (source.charAt(0)) {
-      case '~':
-        token = createToken("~", "LEN", last);
-        //Get the rest of the tokens recursively
-        charNum += 1;
-        getTokens(source.substring(1), token);
-        return token;
       case ',':
         token = createToken(",", "COMMA", last);
         charNum += 1;

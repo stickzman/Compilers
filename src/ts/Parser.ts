@@ -114,13 +114,15 @@ function parse(token: Token, pgrmNum: number): TNode {
     let node = branchNode("VarDecl", parent);
     let type = token;
     let typeNode = parseType(node);
-    if (token.name === "LBRACK") {
-      let arrTypeNode = branchNode("isArray", typeNode);
-      match(["[","]"], arrTypeNode);
-    }
     let name = token;
     let idNode = branchNode("ID", node);
     match(["ID"], idNode, false);
+    if (token.name === "LBRACK") {
+      let arrTypeNode = branchNode("ARRAY", typeNode);
+      match(["["], arrTypeNode);
+      match(["DIGIT"], arrTypeNode, false);
+      match(["]"], arrTypeNode);
+    }
     if (token.symbol === "=") {
       throw error(`Error found at line: ${token.line} col: ${token.col}. ` +
                   `Variable declaration and assignment cannot be in the same statement`);
@@ -208,12 +210,6 @@ function parseIdExpr(parent: TNode) {
     Log.ParseMsg("parseArrayExpr()");
     let node = branchNode("ArrayExpr", parent);
     match(["["], node);
-    if (token.name === "LEN") {
-      let lenNode = branchNode("Length", node);
-      match(["LEN","DIGIT"], lenNode, false);
-      match(["]"], node);
-      return;
-    }
     parseExprList(node);
     match(["]"], node);
   }
