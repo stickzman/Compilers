@@ -95,6 +95,7 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
   }
 
   function getBoolType(node: BaseNode, sTable: SymbolTable): string {
+
     switch (node.name) {
       case "true":
         return "BOOLEAN";
@@ -106,13 +107,25 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
         return "INT";
       case "CHARLIST":
         return "STRING";
+      case "ID":
+        return sTable.getType(node.children[0].name);
+      case "ARRAY":
+        let line: number;
+        let col: number;
+        if (node.children[0].name === "LEN") {
+          line = (<TNode>node.children[0].children[0]).token.line;
+          col = (<TNode>node.children[0].children[0]).token.col;
+        } else {
+          line = (<TNode>node.children[0]).token.line;
+          col = (<TNode>node.children[0]).token.col;
+        }
+        throw error(`Cannot compare whole Arrays within BoolExpr on line: ` +
+                    `${line} col: ${col}`);
     }
-    if (/^[a-z]$/.test(node.name)){
-      //It's an ID
-      return sTable.getType(node.name);
+    if (/^[0-9]$/.test(node.name)) {
+      //Single digit
+      return "INT";
     }
-    //It's a single digit`
-    return "INT"
   }
 
   function analyzeBlock(parent: TNode, scope: SymbolTable) {
@@ -248,7 +261,7 @@ function analyze(token: Token, pgrmNum: number): [TNode, SymbolTable] {
     let node = branchNode("ARRAY", parent);
     discard(["["]);
     if (token.name === "LEN") {
-      let lenNode = branchNode("LEN", parent);
+      let lenNode = branchNode("LEN", node);
       discard(["~"]);
       lenNode.addChild(new TNode(token.symbol, token));
       token = token.next;
