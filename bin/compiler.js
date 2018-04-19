@@ -1375,7 +1375,12 @@ function parse(token, pgrmNum) {
             match(["]"], idNode);
         }
         match(["="], node);
-        parseExpr(node);
+        if (token.symbol === "[") {
+            parseArrayExpr(node);
+        }
+        else {
+            parseExpr(node);
+        }
     }
     function parseVarDecl(parent) {
         Log.ParseMsg("parseVarDecl()");
@@ -1443,9 +1448,6 @@ function parse(token, pgrmNum) {
                 return;
             case "BOOLVAL":
                 parseBooleanExpr(node);
-                return;
-            case "LBRACK":
-                parseArrayExpr(node);
                 return;
             case "ID":
                 parseIdExpr(node);
@@ -1673,19 +1675,6 @@ function analyze(token, pgrmNum) {
                 return "STRING";
             case "ID":
                 return sTable.getType(node.children[0].name);
-            case "ARRAY":
-                let line;
-                let col;
-                if (node.children[0].name === "LEN") {
-                    line = node.children[0].children[0].token.line;
-                    col = node.children[0].children[0].token.col;
-                }
-                else {
-                    line = node.children[0].token.line;
-                    col = node.children[0].token.col;
-                }
-                throw error(`Cannot compare whole Arrays within BoolExpr on line: ` +
-                    `${line} col: ${col}`);
         }
         if (/^[0-9]$/.test(node.name)) {
             //Single digit
@@ -1747,9 +1736,6 @@ function analyze(token, pgrmNum) {
     }
     function analyzeExpr(parent, scope) {
         switch (token.name) {
-            case "LBRACK":
-                analyzeArrayExpr(parent, scope);
-                break;
             case "DIGIT":
                 analyzeAddExpr(parent, scope);
                 break;
@@ -1828,9 +1814,6 @@ function analyze(token, pgrmNum) {
         addToExprList();
         return type;
         function addToExprList() {
-            if (token.symbol === "]") {
-                return;
-            }
             if (getValType(token, scope) !== type) {
                 throw error(`Mixed array type found at line: ${token.line} col: ${token.col}. ` +
                     "All array elements must be of the same type.");
@@ -1838,8 +1821,11 @@ function analyze(token, pgrmNum) {
             analyzeExpr(parent, scope);
             if (token.name === "COMMA") {
                 discard([","]);
+                addToExprList();
             }
-            addToExprList();
+            else {
+                return;
+            }
         }
     }
     function analyzeAddExpr(parent, scope) {
@@ -2245,8 +2231,11 @@ class SymbolTable extends BaseNode {
         let entry;
         for (let i = 0; i < keys.length; i++) {
             entry = this.table[keys[i]];
-            str += `[Name: ${entry.nameTok.symbol}, Type: ${entry.typeTok.name},` +
-                ` Scope: ${depth}, Line: ${entry.nameTok.line}]\n`;
+            str += `[Name: ${entry.nameTok.symbol}, Type: ${entry.typeTok.name}`;
+            if (entry.isArray()) {
+                str += "_ARRAY";
+            }
+            str += ` Scope: ${depth}, Line: ${entry.nameTok.line}]\n`;
         }
         function printChildren(node, depth) {
             //Print the SymbolTable's children in order
@@ -2257,7 +2246,11 @@ class SymbolTable extends BaseNode {
                 let entry;
                 for (let j = 0; j < keys.length; j++) {
                     entry = children[i].table[keys[j]];
-                    str += `[Name: ${entry.nameTok.symbol}, Type: ${entry.typeTok.name}, Scope: `;
+                    str += `[Name: ${entry.nameTok.symbol}, Type: ${entry.typeTok.name}`;
+                    if (entry.isArray()) {
+                        str += "_ARRAY";
+                    }
+                    str += `, Scope: `;
                     str += (children.length > 1) ? depth + "-" + i : depth;
                     str += `, Line: ${entry.nameTok.line}]\n`;
                 }

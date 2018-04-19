@@ -28,7 +28,7 @@ Ex: `a[0] = 3` or `1 + 2 + a[3]`
 
 ### Array Expression
 
-`ArrExpr ::== [ExprList]`  
+`Array ::== [ExprList]`  
 `ExprList ::== Expr, ExprList`  
 `         ::== Expr`
 
@@ -36,6 +36,6 @@ Ex: `a[0] = 3` or `1 + 2 + a[3]`
 
 ### Array Assignment
 
-`Id = ArrExpr` The ArrExpr must have equal or less length than the length of the array variable being assigned.  If ArrExpr length _n_ is less than the length of the array variable, then it will assign elements 0-n of the array variable to the corresponding elements in the ArrExpr.
+`Id = Array` The ArrExpr must have equal or less length than the length of the array variable being assigned.  If ArrExpr length _n_ is less than the length of the array variable, then it will assign elements 0-n of the array variable to the corresponding elements in the ArrExpr.
 
 Ex: `a = [3, 5, 2]`

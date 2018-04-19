@@ -106,7 +106,11 @@ function parse(token: Token, pgrmNum: number): TNode {
       match(["]"], idNode);
     }
     match(["="], node);
-    parseExpr(node);
+    if (token.symbol === "[") {
+      parseArrayExpr(node);
+    } else {
+      parseExpr(node);
+    }
   }
 
   function parseVarDecl(parent: TNode) {
@@ -179,9 +183,6 @@ function parse(token: Token, pgrmNum: number): TNode {
         return;
       case "BOOLVAL":
         parseBooleanExpr(node);
-        return;
-      case "LBRACK":
-        parseArrayExpr(node);
         return;
       case "ID":
         parseIdExpr(node);

@@ -80,8 +80,11 @@ class SymbolTable extends BaseNode {
     let entry;
     for (let i = 0; i < keys.length; i++) {
       entry = this.table[keys[i]];
-      str += `[Name: ${entry.nameTok.symbol}, Type: ${entry.typeTok.name},` +
-              ` Scope: ${depth}, Line: ${entry.nameTok.line}]\n`;
+      str += `[Name: ${entry.nameTok.symbol}, Type: ${entry.typeTok.name}`;
+        if (entry.isArray()) {
+          str += "_ARRAY";
+        }
+      str += ` Scope: ${depth}, Line: ${entry.nameTok.line}]\n`;
     }
 
     function printChildren(node: SymbolTable, depth: number) {
@@ -93,7 +96,11 @@ class SymbolTable extends BaseNode {
         let entry;
         for (let j = 0; j < keys.length; j++) {
           entry = children[i].table[keys[j]];
-          str += `[Name: ${entry.nameTok.symbol}, Type: ${entry.typeTok.name}, Scope: `;
+          str += `[Name: ${entry.nameTok.symbol}, Type: ${entry.typeTok.name}`;
+          if (entry.isArray()) {
+            str += "_ARRAY";
+          }
+          str += `, Scope: `;
           str += (children.length > 1) ? depth + "-" + i : depth;
           str += `, Line: ${entry.nameTok.line}]\n`;
         }
