@@ -30,13 +30,12 @@ Ex: `a[0] = 3` or `1 + 2 + a[3]`
 
 `ArrExpr ::== [ExprList]`  
 `ExprList ::== Expr, ExprList`  
-`         ::== Expr`  
-`         ::== ε`  
+`         ::== Expr`
 
 **Arrays are one-dimensional**
 
 ### Array Assignment
 
-`Id = ArrExpr` The ArrExpr must have equal or less length than the length of the array variable being assigned.  If ArrExpr length _n_ is less than the length of the array variable, then it will assign elements 0-n of the array variable to the corresponding elements in the ArrExpr. 
+`Id = ArrExpr` The ArrExpr must have equal or less length than the length of the array variable being assigned.  If ArrExpr length _n_ is less than the length of the array variable, then it will assign elements 0-n of the array variable to the corresponding elements in the ArrExpr.
 
-Ex: `a = [3, 5, 2]` or `a = []`
+Ex: `a = [3, 5, 2]`
